@@ -31,14 +31,13 @@ class BaseController {
             }
         });
     }
-    ;
     getById(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             const postId = req.params.id;
             try {
                 const post = yield this.model.findById(postId);
                 if (post === null) {
-                    return res.status(404).send("not found");
+                    return res.status(404).send('not found');
                 }
                 else {
                     return res.status(200).send(post);
@@ -49,7 +48,6 @@ class BaseController {
             }
         });
     }
-    ;
     create(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             const item = req.body;
@@ -62,10 +60,10 @@ class BaseController {
             }
         });
     }
-    ;
     deleteItem(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             const itemnId = req.params.id;
+            console.log(`Deleting trip with ID: ${itemnId}`); // Log the request
             try {
                 yield this.model.findByIdAndDelete(itemnId);
                 res.status(200).send();
@@ -75,8 +73,19 @@ class BaseController {
             }
         });
     }
-    ;
+    update(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const item = req.body;
+            const itemId = req.params.id;
+            try {
+                const updatedItem = yield this.model.findByIdAndUpdate(itemId, item, { new: true });
+                res.status(200).send(updatedItem);
+            }
+            catch (error) {
+                res.status(400).send(error);
+            }
+        });
+    }
 }
-;
 exports.default = BaseController;
 //# sourceMappingURL=base_controller.js.map

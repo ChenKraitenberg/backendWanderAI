@@ -13,7 +13,12 @@ export interface IPost extends mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
   likes: string[];
-  comments: string[];
+  //comments: string[];
+  comments: {
+    user: string;
+    text: string;
+    createdAt: Date;
+  }[];
 }
 
 const PostSchema = new Schema<IPost>({
@@ -63,11 +68,23 @@ const PostSchema = new Schema<IPost>({
     type: [String],
     default: [],
   },
-  comments: {
-    type: [String],
-    required: true,
-    default: [],
-  },
+  comments: [
+    {
+      user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      text: {
+        type: String,
+        required: true,
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
 });
 
 // לדאוג שבכל שמירה יתעדכן updatedAt

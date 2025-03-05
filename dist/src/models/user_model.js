@@ -19,7 +19,13 @@ const userSchema = new Schema({
         type: [String],
         default: [],
     },
+    avatar: {
+        type: String,
+    },
+    name: {
+        type: String,
+    },
 });
-const userModel = mongoose_1.default.model("Users", userSchema);
+const userModel = mongoose_1.default.model('Users', userSchema);
 exports.default = userModel;
 //# sourceMappingURL=user_model.js.map

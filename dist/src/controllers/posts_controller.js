@@ -29,7 +29,54 @@ class PostController extends base_controller_1.default {
             _super.create.call(this, req, res);
         });
     }
-    ;
+    update(req, res) {
+        const _super = Object.create(null, {
+            update: { get: () => super.update }
+        });
+        return __awaiter(this, void 0, void 0, function* () {
+            const userId = req.params.userId;
+            const post = Object.assign(Object.assign({}, req.body), { owner: userId });
+            req.body = post;
+            _super.update.call(this, req, res);
+        });
+    }
+    addComment(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const postId = req.params.postId;
+            const comment = req.body;
+            const post = yield posts_model_1.default.findById(postId);
+            if (!post) {
+                return res.status(404).send('Post not found');
+            }
+            post.comments.push(comment);
+            yield post.save();
+            res.send(post);
+        });
+    }
+    // doLike
+    doLike(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const postId = req.params.postId;
+                const userId = req.userId; // מתוך הטוקן
+                const post = yield this.model.findById(postId);
+                if (!post) {
+                    return res.status(404).send('Post not found');
+                }
+                // בדיקה אם המשתמש כבר נתן לייק
+                const alreadyLiked = post.likes.includes(userId);
+                if (!alreadyLiked) {
+                    post.likes.push(userId);
+                    yield post.save();
+                }
+                return res.json(post);
+            }
+            catch (error) {
+                console.error(error);
+                return res.status(500).json({ message: 'Failed to like post' });
+            }
+        });
+    }
 }
 exports.default = new PostController();
 //# sourceMappingURL=posts_controller.js.map

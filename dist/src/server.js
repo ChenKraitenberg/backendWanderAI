@@ -18,40 +18,66 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const mongoose_1 = __importDefault(require("mongoose"));
 const body_parser_1 = __importDefault(require("body-parser"));
-const posts_route_1 = __importDefault(require("./routes/posts_route"));
-const comments_route_1 = __importDefault(require("./routes/comments_route"));
-const auth_route_1 = __importDefault(require("./routes/auth_route"));
 const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
+//import postsRoute from './routes/posts_route';
+const trips_router_1 = __importDefault(require("./routes/trips_router"));
+const comments_route_1 = __importDefault(require("./routes/comments_route"));
+const auth_route_1 = __importDefault(require("./routes/auth_route"));
+const file_route_1 = __importDefault(require("./routes/file_route"));
+const cors_1 = __importDefault(require("cors"));
+const axios = require('axios');
+app.use((0, cors_1.default)({
+    origin: 'http://localhost:5173', // הדומיין של הפרונט
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    next();
+});
 const db = mongoose_1.default.connection;
-db.on("error", (error) => console.error(error));
-db.once("open", () => console.log("Connected to Database"));
+db.on('error', (error) => console.error(error));
+db.once('open', () => console.log('Connected to Database'));
 app.use(body_parser_1.default.json());
 app.use(body_parser_1.default.urlencoded({ extended: true }));
-app.use("/posts", posts_route_1.default);
-app.use("/comments", comments_route_1.default);
-app.use("/auth", auth_route_1.default);
-app.get("/about", (req, res) => {
-    res.send("Hello World!");
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', ' http://localhost:5173');
+    res.header('Access-Control-Allow-Methods', '*');
+    res.header('Access-Control-Allow-Headers', '*');
+    next();
 });
+app.use('/trips', trips_router_1.default);
+app.use('/comments', comments_route_1.default);
+app.use('/auth', auth_route_1.default);
+app.use('/uploads', express_1.default.static('public/uploads'));
+//app.use('/uploads', express.static(path.resolve(__dirname, 'public/uploads')));
+app.use('/file', file_route_1.default);
+app.get('/about', (req, res) => {
+    res.send('Hello World!');
+});
+app.use('/public', express_1.default.static('public'));
+app.use('/storage', express_1.default.static('storage'));
+app.use(express_1.default.static('front'));
 const options = {
     definition: {
-        openapi: "3.0.0",
+        openapi: '3.0.0',
         info: {
-            title: "Web Dev 2025 - D - REST API",
-            version: "1.0.0",
-            description: "REST server including authentication using JWT",
+            title: 'Web Dev 2025 - D - REST API',
+            version: '1.0.0',
+            description: 'REST server including authentication using JWT',
         },
-        servers: [{ url: "http://localhost:" + process.env.PORT, },],
+        servers: [{ url: 'http://localhost:' + process.env.PORT }],
     },
-    apis: ["./src/routes/*.ts"],
+    apis: ['./src/routes/*.ts'],
 };
 const specs = (0, swagger_jsdoc_1.default)(options);
-app.use("/api-docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(specs));
+app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(specs));
 const initApp = () => {
     return new Promise((resolve, reject) => __awaiter(void 0, void 0, void 0, function* () {
         if (process.env.DB_CONNECTION == undefined) {
-            reject("DB_CONNECTION is not defined");
+            reject('DB_CONNECTION is not defined');
         }
         else {
             yield mongoose_1.default.connect(process.env.DB_CONNECTION);

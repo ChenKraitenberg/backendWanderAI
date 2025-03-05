@@ -8,8 +8,8 @@ import bodyParser from 'body-parser';
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUI from 'swagger-ui-express';
 
-//import postsRoute from './routes/posts_route';
-import tripsRoute from './routes/trips_router';
+import postsRoute from './routes/posts_route';
+//import tripsRoute from './routes/trips_router';
 import commentsRoute from './routes/comments_route';
 import authRoute from './routes/auth_route';
 import fileRoute from './routes/file_route';
@@ -44,7 +44,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/trips', tripsRoute);
+//app.use('/trips', tripsRoute);
+app.use('/posts', postsRoute);
 app.use('/comments', commentsRoute);
 app.use('/auth', authRoute);
 

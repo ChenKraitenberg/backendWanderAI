@@ -153,4 +153,13 @@ router.post('/:postId/comments', authMiddleware, postsController.create.bind(pos
 
 router.post('/:postId/like', authMiddleware, postsController.create.bind(postsController));
 
+// Like a post
+router.post('/:id/like', authMiddleware, postsController.toggleLike.bind(postsController));
+
+// Add comment to post
+router.post('/:id/comment', authMiddleware, postsController.addComment.bind(postsController));
+
+// Get comments for a post
+router.get('/:id/comments', postsController.getComments.bind(postsController));
+
 export default router;
