@@ -1,3 +1,4 @@
+// src/controllers/posts_controller.ts
 import postModel, { IPost } from '../models/posts_model';
 import { Request, Response } from 'express';
 import BaseController from './base_controller';
@@ -17,6 +18,7 @@ class PostController extends BaseController<IPost> {
     super.create(req, res);
   }
 
+  // Modified to preserve the post owner on update
   async update(req: Request, res: Response) {
     const userId = req.params.userId;
     const post = {
@@ -27,42 +29,6 @@ class PostController extends BaseController<IPost> {
     super.update(req, res);
   }
 
-  // async addComment(req: Request, res: Response) {
-  //   const postId = req.params.postId;
-  //   const comment = req.body;
-  //   const post = await postModel.findById(postId);
-  //   if (!post) {
-  //     return res.status(404).send('Post not found');
-  //   }
-  //   post.comments.push(comment);
-  //   await post.save();
-  //   res.send(post);
-  // }
-
-  // doLike
-  async doLike(req: Request, res: Response) {
-    try {
-      const postId = req.params.postId;
-      const userId = (req as any).userId; // מתוך הטוקן
-      const post = await this.model.findById(postId);
-      if (!post) {
-        return res.status(404).send('Post not found');
-      }
-
-      // בדיקה אם המשתמש כבר נתן לייק
-      const alreadyLiked = post.likes.includes(userId);
-      if (!alreadyLiked) {
-        post.likes.push(userId);
-        await post.save();
-      }
-
-      return res.json(post);
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: 'Failed to like post' });
-    }
-  }
-
   // Handle like functionality
   async toggleLike(req: Request, res: Response) {
     try {
@@ -71,7 +37,6 @@ class PostController extends BaseController<IPost> {
 
       const post = await this.model.findById(postId);
       if (!post) {
-        //return res.status(404).send('Post not found');
         res.status(404).send('Post not found');
         return;
       }
@@ -85,13 +50,9 @@ class PostController extends BaseController<IPost> {
       }
 
       await post.save();
-
-      //return res.status(200).json(post);
       res.status(200).json(post);
-      return;
     } catch (error) {
       console.error('Error toggling like:', error);
-      //return res.status(500).json({ error: 'Failed to toggle like' });
       res.status(500).json({ error: 'Failed to toggle like' });
     }
   }
@@ -104,13 +65,13 @@ class PostController extends BaseController<IPost> {
       const { text } = req.body;
 
       if (!text) {
-        //return res.status(400).json({ error: 'Comment text is required' });
+        res.status(400).json({ error: 'Comment text is required' });
         return;
       }
 
       const post = await this.model.findById(postId);
       if (!post) {
-        //return res.status(404).send('Post not found');
+        res.status(404).send('Post not found');
         return;
       }
 
@@ -124,12 +85,10 @@ class PostController extends BaseController<IPost> {
 
       // Populate user info for the newly added comment
       const updatedPost = await this.model.findById(postId).populate('comments.user', 'email avatar');
-      //return res.status(200).json(updatedPost);
-      return;
+      res.status(200).json(updatedPost);
     } catch (error) {
       console.error('Error adding comment:', error);
-      //return res.status(500).json({ error: 'Failed to add comment' });
-      return;
+      res.status(500).json({ error: 'Failed to add comment' });
     }
   }
 
@@ -141,16 +100,14 @@ class PostController extends BaseController<IPost> {
       const post = await this.model.findById(postId).populate('comments.user', 'email avatar');
 
       if (!post) {
-        // return res.status(404).send('Post not found');
+        res.status(404).send('Post not found');
         return;
       }
 
-      //return res.status(200).json(post.comments);
-      return;
+      res.status(200).json(post.comments);
     } catch (error) {
       console.error('Error getting comments:', error);
-      //return res.status(500).json({ error: 'Failed to get comments' });
-      return;
+      res.status(500).json({ error: 'Failed to get comments' });
     }
   }
 }

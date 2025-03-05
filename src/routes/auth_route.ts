@@ -192,4 +192,20 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
+router.put('/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = await userModel.findByIdAndUpdate(req.params.userId, req.body, { new: true });
+    if (!user) {
+      res.status(400).send('Access Denied');
+      return;
+    }
+    res.json({
+      _id: user._id,
+      email: user.email,
+      avatar: user.avatar,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 export default router;

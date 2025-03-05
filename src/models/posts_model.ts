@@ -19,6 +19,8 @@ export interface IPost extends mongoose.Document {
     text: string;
     createdAt: Date;
   }[];
+  owner: { type: String; required: true };
+  userId: { type: String; required: true };
 }
 
 const PostSchema = new Schema<IPost>({
@@ -85,6 +87,16 @@ const PostSchema = new Schema<IPost>({
       },
     },
   ],
+  owner: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
 });
 
 // לדאוג שבכל שמירה יתעדכן updatedAt

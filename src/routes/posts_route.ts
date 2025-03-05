@@ -151,8 +151,6 @@ router.delete('/:id', authMiddleware, postsController.deleteItem.bind(postsContr
 
 router.post('/:postId/comments', authMiddleware, postsController.create.bind(postsController));
 
-router.post('/:postId/like', authMiddleware, postsController.create.bind(postsController));
-
 // Like a post
 router.post('/:id/like', authMiddleware, postsController.toggleLike.bind(postsController));
 

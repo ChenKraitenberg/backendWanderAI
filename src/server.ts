@@ -15,12 +15,13 @@ import authRoute from './routes/auth_route';
 import fileRoute from './routes/file_route';
 import cors from 'cors';
 const axios = require('axios');
+app.use(express.json());
 
 app.use(
   cors({
     origin: 'http://localhost:5173', // הדומיין של הפרונט
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
