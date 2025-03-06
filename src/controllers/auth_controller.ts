@@ -4,36 +4,10 @@ import userModel, { IUser } from '../models/user_model';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Document } from 'mongoose';
+import axios from 'axios';
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
-// const register = async (req: Request, res: Response) => {
-//   try {
-
-//     const password = req.body.password;
-//     const hashedPassword = await bcrypt.hash(password, 10);
-//     if (!req.body.avatar) req.body.avatar = null;
-
-//     const user = await userModel.create({
-//       email: req.body.email,
-//       password: hashedPassword,
-//       avatar: req.body.avatar,
-//     });
-
-//     // יצירת טוקן JWT
-//     const token = jwt.sign(
-//       { _id: user._id, email: user.email },
-//       process.env.TOKEN_SECRET as string,
-//       { expiresIn: process.env.TOKEN_EXPIRE } // תוקף הטוקן מתוך משתני הסביבה
-//     );
-
-//     // החזרת תגובה עם הטוקן והמשתמש
-//     res.status(200).send({
-//       token,
-//       user,
-//     });
-//   } catch (err) {
-//     res.status(400).send('wrong email or password');
-//   }
-// };
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, avatar } = req.body;
@@ -242,9 +216,217 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   });
 };
 
+// Social login handler
+const socialLogin = async (req: Request, res: Response) => {
+  try {
+    const { provider, token, email, name, avatar } = req.body;
+
+    if (!token || !provider) {
+      res.status(400).json({ message: 'Provider and token are required' });
+    }
+
+    let userData;
+    let socialEmail;
+
+    // Verify token with provider
+    try {
+      if (provider === 'google') {
+        // Verify Google token
+        const googleResponse = await axios.get(`https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${token}`);
+        const googleData = googleResponse.data as { email: string };
+        socialEmail = googleData.email;
+
+        if (!socialEmail) {
+          res.status(400).json({ message: 'Invalid Google token' });
+        }
+      } else if (provider === 'facebook') {
+        // Verify Facebook token
+        const facebookResponse = await axios.get(`https://graph.facebook.com/me?fields=email,name&access_token=${token}`);
+        const facebookData = facebookResponse.data as { email: string };
+        socialEmail = facebookData.email;
+
+        if (!socialEmail) {
+          res.status(400).json({ message: 'Invalid Facebook token' });
+        }
+      } else {
+        res.status(400).json({ message: 'Invalid provider' });
+      }
+    } catch (error) {
+      console.error('Error verifying social token:', error);
+      res.status(400).json({ message: 'Invalid token' });
+    }
+
+    // Check if user exists with this email
+    let user = await userModel.findOne({ email: socialEmail || email });
+
+    // If user doesn't exist, create one
+    if (!user) {
+      const randomPassword = crypto.randomBytes(20).toString('hex');
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      user = await userModel.create({
+        email: socialEmail || email,
+        password: hashedPassword,
+        name: name || '',
+        avatar: avatar || null,
+        socialProvider: provider,
+      });
+    }
+
+    // Generate tokens
+    const tokens = generateTokens(user);
+    if (!tokens) {
+      res.status(500).json({ message: 'Failed to generate authentication tokens' });
+      return;
+    }
+
+    await user.save();
+
+    // Return tokens and user info
+    res.status(200).json({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      _id: user._id,
+    });
+  } catch (error) {
+    console.error('Social login error:', error);
+    res.status(500).json({ message: 'Server error during social login' });
+  }
+};
+
+// Request password reset
+const requestPasswordReset = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ message: 'Email is required' });
+      return;
+    }
+
+    // Find user with this email
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date();
+    tokenExpiry.setHours(tokenExpiry.getHours() + 1); // Token valid for 1 hour
+
+    // Save token to user
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = tokenExpiry;
+    await user.save();
+
+    // Configure email transport
+    const transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE || 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Reset link
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    // Email options
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Password Reset Request',
+      html: `
+        <h1>Password Reset Request</h1>
+        <p>You requested a password reset for your account.</p>
+        <p>Please click the link below to reset your password. This link is valid for 1 hour.</p>
+        <a href="${resetLink}">Reset Password</a>
+        <p>If you didn't request this, please ignore this email.</p>
+      `,
+    };
+
+    // Send email
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: 'Password reset email sent' });
+  } catch (error) {
+    console.error('Password reset request error:', error);
+    res.status(500).json({ message: 'Server error during password reset request' });
+  }
+};
+
+// Validate reset token
+const validateResetToken = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      res.status(400).json({ message: 'Token is required' });
+    }
+
+    // Find user with this token
+    const user = await userModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() }, // Token has not expired
+    });
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired token' });
+    }
+
+    res.status(200).json({ message: 'Token is valid' });
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({ message: 'Server error during token validation' });
+  }
+};
+
+// Reset password
+const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      res.status(400).json({ message: 'Token and new password are required' });
+    }
+
+    // Find user with this token
+    const user = await userModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() }, // Token has not expired
+    });
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired token' });
+      return;
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: 'Password has been reset successfully' });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ message: 'Server error during password reset' });
+  }
+};
+
 export default {
   register,
   login,
   logout,
   refresh,
+  socialLogin,
+  requestPasswordReset,
+  validateResetToken,
+  resetPassword,
 };

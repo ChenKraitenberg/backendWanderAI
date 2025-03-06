@@ -8,6 +8,9 @@ export interface IUser {
   refreshToken?: string[];
   avatar?: string;
   name?: string; // אם את רוצה שם למשתמש
+  socialProvider?: 'google' | 'facebook' | null;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
 }
 
 const userSchema = new Schema<IUser>({
@@ -29,6 +32,17 @@ const userSchema = new Schema<IUser>({
   },
   name: {
     type: String,
+  },
+  socialProvider: {
+    type: String,
+    enum: ['google', 'facebook', null],
+    default: null,
+  },
+  resetPasswordToken: {
+    type: String,
+  },
+  resetPasswordExpires: {
+    type: Date,
   },
 });
 

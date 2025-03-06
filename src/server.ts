@@ -9,17 +9,16 @@ import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUI from 'swagger-ui-express';
 
 import postsRoute from './routes/posts_route';
-//import tripsRoute from './routes/trips_router';
 import commentsRoute from './routes/comments_route';
 import authRoute from './routes/auth_route';
 import fileRoute from './routes/file_route';
 import cors from 'cors';
-const axios = require('axios');
+
 app.use(express.json());
 
 app.use(
   cors({
-    origin: 'http://localhost:5173', // הדומיין של הפרונט
+    origin: 'http://localhost:5173', // Frontend domain
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -39,20 +38,19 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', ' http://localhost:5173');
+  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
   res.header('Access-Control-Allow-Methods', '*');
   res.header('Access-Control-Allow-Headers', '*');
   next();
 });
 
-//app.use('/trips', tripsRoute);
+// Routes
 app.use('/posts', postsRoute);
 app.use('/comments', commentsRoute);
 app.use('/auth', authRoute);
 
+// Serve static files
 app.use('/uploads', express.static('public/uploads'));
-//app.use('/uploads', express.static(path.resolve(__dirname, 'public/uploads')));
-
 app.use('/file', fileRoute);
 
 app.get('/about', (req, res) => {
@@ -63,15 +61,25 @@ app.use('/public', express.static('public'));
 app.use('/storage', express.static('storage'));
 app.use(express.static('front'));
 
+// Swagger configuration
 const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Web Dev 2025 - D - REST API',
+      title: 'Travel App REST API',
       version: '1.0.0',
-      description: 'REST server including authentication using JWT',
+      description: 'REST server including authentication using JWT with social login integration',
     },
     servers: [{ url: 'http://localhost:' + process.env.PORT }],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
   },
   apis: ['./src/routes/*.ts'],
 };
@@ -84,6 +92,7 @@ const initApp = () => {
       reject('DB_CONNECTION is not defined');
     } else {
       await mongoose.connect(process.env.DB_CONNECTION);
+      console.log('Database connection established');
       resolve(app);
     }
   });

@@ -208,4 +208,123 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// Social Login
+/**
+ * @swagger
+ * /auth/social-login:
+ *   post:
+ *     summary: Login or register with social provider
+ *     description: Authenticates a user with Google or Facebook token
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               provider:
+ *                 type: string
+ *                 enum: [google, facebook]
+ *               token:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               avatar:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Successful login
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                 refreshToken:
+ *                   type: string
+ *                 _id:
+ *                   type: string
+ */
+router.post('/social-login', authController.socialLogin);
+
+/**
+ * @swagger
+ * /auth/request-reset:
+ *   post:
+ *     summary: Request password reset
+ *     description: Sends a password reset email with a token
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Reset email sent
+ *       '404':
+ *         description: Email not found
+ */
+router.post('/request-reset', authController.requestPasswordReset);
+
+/**
+ * @swagger
+ * /auth/validate-reset-token/{token}:
+ *   get:
+ *     summary: Validate reset token
+ *     description: Checks if a password reset token is valid
+ *     tags:
+ *       - Auth
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Token is valid
+ *       '400':
+ *         description: Invalid or expired token
+ */
+router.get('/validate-reset-token/:token', authController.validateResetToken);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset password
+ *     description: Resets a user's password with a valid token
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Password successfully reset
+ *       '400':
+ *         description: Invalid token or password
+ */
+router.post('/reset-password', authController.resetPassword);
+
 export default router;

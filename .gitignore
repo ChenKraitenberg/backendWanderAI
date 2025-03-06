@@ -2,4 +2,9 @@ node_modules/
 coverage/
 front/
 storage/
+.env
+.env.local
+.env.development
+.env.test
+.env.production
 
