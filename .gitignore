@@ -7,4 +7,6 @@ storage/
 .env.development
 .env.test
 .env.production
+.env_test
+.env_dev
 
