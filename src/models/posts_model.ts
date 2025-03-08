@@ -1,3 +1,4 @@
+// src/models/posts_model.ts
 import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
@@ -10,17 +11,24 @@ export interface IPost extends mongoose.Document {
   maxSeats: number;
   bookedSeats: number;
   image: string;
+  destination: string;
+  category: 'RELAXED' | 'MODERATE' | 'INTENSIVE';
   createdAt: Date;
   updatedAt: Date;
   likes: string[];
-  //comments: string[];
   comments: {
     user: string;
     text: string;
     createdAt: Date;
   }[];
-  owner: { type: String; required: true };
-  userId: { type: String; required: true };
+  owner: string;
+  userId: string;
+  user: {
+    _id: string;
+    email: string;
+    name: string;
+    avatar?: string;
+  };
 }
 
 const PostSchema = new Schema<IPost>({
@@ -56,15 +64,24 @@ const PostSchema = new Schema<IPost>({
     type: String,
     required: true,
   },
+  destination: {
+    type: String,
+    default: '',
+  },
+  category: {
+    type: String,
+    enum: ['RELAXED', 'MODERATE', 'INTENSIVE'],
+    default: 'RELAXED',
+  },
   createdAt: {
     type: Date,
     required: true,
-    default: new Date(),
+    default: Date.now,
   },
   updatedAt: {
     type: Date,
     required: true,
-    default: new Date(),
+    default: Date.now,
   },
   likes: {
     type: [String],
@@ -88,19 +105,37 @@ const PostSchema = new Schema<IPost>({
     },
   ],
   owner: {
-    type: Schema.Types.ObjectId,
+    type: Schema.Types.String,
     ref: 'User',
     required: true,
   },
   userId: {
-    type: Schema.Types.ObjectId,
+    type: Schema.Types.String,
     ref: 'User',
     required: true,
   },
+  // Store user info directly in the post for easy display
+  user: {
+    _id: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+    },
+    name: {
+      type: String,
+      required: true,
+    },
+    avatar: {
+      type: String,
+    },
+  },
 });
 
-// לדאוג שבכל שמירה יתעדכן updatedAt
-PostSchema.pre('save', function (next) {
+// Update the updatedAt field on every save
+PostSchema.pre<IPost>('save', function (next) {
   this.updatedAt = new Date();
   next();
 });

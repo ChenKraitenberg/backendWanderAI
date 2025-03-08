@@ -1,3 +1,4 @@
+// src/models/user_model.ts
 import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
@@ -7,7 +8,7 @@ export interface IUser {
   _id?: string;
   refreshToken?: string[];
   avatar?: string;
-  name?: string; // אם את רוצה שם למשתמש
+  name: string; // Changed from optional to required
   socialProvider?: 'google' | 'facebook' | null;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -32,6 +33,7 @@ const userSchema = new Schema<IUser>({
   },
   name: {
     type: String,
+    required: true, // Name is now required
   },
   socialProvider: {
     type: String,
