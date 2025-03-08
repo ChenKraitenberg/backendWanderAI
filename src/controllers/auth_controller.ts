@@ -1,4 +1,4 @@
-// auth_controller.ts
+// src/controllers/auth_controller.ts
 import { NextFunction, Request, Response } from 'express';
 import userModel, { IUser } from '../models/user_model';
 import bcrypt from 'bcrypt';
@@ -10,34 +10,51 @@ import crypto from 'crypto';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, avatar } = req.body;
+    const { email, password, name, avatar } = req.body;
 
-    // 1. בדיקה אם המשתמש כבר קיים במסד הנתונים
+    // Check for required fields
+    if (!email || !password) {
+      res.status(400).json({ message: 'Email and password are required' });
+      return;
+    }
+
+    // Name is now required
+    if (!name) {
+      res.status(400).json({ message: 'Username is required' });
+      return;
+    }
+
+    // Check if user already exists
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
       res.status(400).json({ message: 'User already exists' });
       return;
     }
 
-    // 2. הצפנת הסיסמה
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. יצירת משתמש חדש
+    // Create new user
     const user = await userModel.create({
       email,
       password: hashedPassword,
+      name, // Save the username
       avatar: avatar || null,
     });
 
-    // 4. יצירת טוקן JWT
-    const token = jwt.sign(
-      { _id: user._id, email: user.email },
-      process.env.TOKEN_SECRET as string,
-      { expiresIn: process.env.TOKEN_EXPIRE } // תוקף הטוקן מתוך משתני הסביבה
-    );
+    // Generate JWT token
+    const token = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE });
 
-    // 5. החזרת תשובה ללקוח
-    res.status(200).json({ token, user });
+    // Return response
+    res.status(200).json({
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(400).send('Something went wrong in register process.');
@@ -79,33 +96,43 @@ const generateTokens = (user: IUser): { accessToken: string; refreshToken: strin
 
 const login = async (req: Request, res: Response) => {
   try {
-    //verify user & password
+    // Verify user & password
     const user = await userModel.findOne({ email: req.body.email });
     if (!user) {
-      res.status(400).send('wrong email or password');
+      res.status(400).send('Wrong email or password');
       return;
     }
     const valid = await bcrypt.compare(req.body.password, user.password);
     if (!valid) {
-      res.status(400).send('wrong email or password');
+      res.status(400).send('Wrong email or password');
       return;
     }
-    //generate tokens
+
+    // Generate tokens
     const tokens = generateTokens(user);
     if (!tokens) {
       res.status(400).send('Access Denied');
       return;
     }
     await user.save();
+
+    // Return user info with tokens
     res.status(200).send({
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       _id: user._id,
+      user: {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+      },
     });
   } catch (err) {
-    res.status(400).send('wrong email or password');
+    res.status(400).send('Wrong email or password');
   }
 };
+
 type UserDocument = Document<unknown, {}, IUser> &
   IUser &
   Required<{
@@ -155,9 +182,7 @@ const verifyAccessToken = (refreshToken: string | undefined) => {
 const logout = async (req: Request, res: Response) => {
   try {
     const user = await verifyAccessToken(req.body.refreshToken);
-
     await user.save();
-
     res.status(200).send('Logged out');
   } catch (err) {
     res.status(400).send('Access Denied');
@@ -169,7 +194,7 @@ const refresh = async (req: Request, res: Response) => {
   try {
     const user = await verifyAccessToken(req.body.refreshToken);
 
-    //generate new tokens
+    // Generate new tokens
     const tokens = generateTokens(user);
     await user.save();
 
@@ -177,7 +202,8 @@ const refresh = async (req: Request, res: Response) => {
       res.status(400).send('Access Denied');
       return;
     }
-    //send response
+
+    // Send response
     res.status(200).send({
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -191,6 +217,7 @@ const refresh = async (req: Request, res: Response) => {
 type Payload = {
   _id: string;
 };
+
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const authorization = req.headers.authorization;
   const token = authorization && authorization.split(' ')[1];
@@ -223,6 +250,13 @@ const socialLogin = async (req: Request, res: Response) => {
 
     if (!token || !provider) {
       res.status(400).json({ message: 'Provider and token are required' });
+      return;
+    }
+
+    // Name is now required
+    if (!name) {
+      res.status(400).json({ message: 'Username is required' });
+      return;
     }
 
     let userData;
@@ -238,6 +272,7 @@ const socialLogin = async (req: Request, res: Response) => {
 
         if (!socialEmail) {
           res.status(400).json({ message: 'Invalid Google token' });
+          return;
         }
       } else if (provider === 'facebook') {
         // Verify Facebook token
@@ -247,13 +282,16 @@ const socialLogin = async (req: Request, res: Response) => {
 
         if (!socialEmail) {
           res.status(400).json({ message: 'Invalid Facebook token' });
+          return;
         }
       } else {
         res.status(400).json({ message: 'Invalid provider' });
+        return;
       }
     } catch (error) {
       console.error('Error verifying social token:', error);
       res.status(400).json({ message: 'Invalid token' });
+      return;
     }
 
     // Check if user exists with this email
@@ -267,10 +305,16 @@ const socialLogin = async (req: Request, res: Response) => {
       user = await userModel.create({
         email: socialEmail || email,
         password: hashedPassword,
-        name: name || '',
+        name: name, // Save the username
         avatar: avatar || null,
         socialProvider: provider,
       });
+    } else {
+      // Update the user's name if it was provided
+      if (name && (!user.name || user.name === 'Anonymous')) {
+        user.name = name;
+        await user.save();
+      }
     }
 
     // Generate tokens
@@ -287,6 +331,12 @@ const socialLogin = async (req: Request, res: Response) => {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       _id: user._id,
+      user: {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+      },
     });
   } catch (error) {
     console.error('Social login error:', error);
@@ -365,6 +415,7 @@ const validateResetToken = async (req: Request, res: Response) => {
 
     if (!token) {
       res.status(400).json({ message: 'Token is required' });
+      return;
     }
 
     // Find user with this token
@@ -375,6 +426,7 @@ const validateResetToken = async (req: Request, res: Response) => {
 
     if (!user) {
       res.status(400).json({ message: 'Invalid or expired token' });
+      return;
     }
 
     res.status(200).json({ message: 'Token is valid' });
@@ -391,6 +443,7 @@ const resetPassword = async (req: Request, res: Response) => {
 
     if (!token || !newPassword) {
       res.status(400).json({ message: 'Token and new password are required' });
+      return;
     }
 
     // Find user with this token
