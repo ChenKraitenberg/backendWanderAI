@@ -146,50 +146,87 @@ class PostController extends BaseController<IPost> {
         filter.destination = { $regex: req.query.destination, $options: 'i' };
       }
 
-      // Execute the query with pagination
-      const posts = await this.model
-        .find(filter)
-        .sort({ createdAt: -1 }) // Sort by newest first
-        .skip(skip)
-        .limit(limit);
+      // Add price range filter if provided
+      if (req.query.minPrice || req.query.maxPrice) {
+        filter.price = {};
 
-      // For any posts missing user info, try to fetch it
-      for (const post of posts) {
-        if (!post.user || !post.user.name) {
-          try {
-            const user = await userModel.findById(post.userId);
-            if (user) {
-              post.user = {
-                _id: user._id.toString(),
-                email: user.email,
-                name: user.name || 'Anonymous',
-                avatar: user.avatar,
-              };
-              await post.save();
-            }
-          } catch (err) {
-            console.error(`Failed to fetch user info for post ${post._id}:`, err);
-          }
+        if (req.query.minPrice) {
+          filter.price.$gte = parseInt(req.query.minPrice as string);
+        }
+
+        if (req.query.maxPrice) {
+          filter.price.$lte = parseInt(req.query.maxPrice as string);
         }
       }
 
-      // Get total count for pagination metadata
-      const total = await this.model.countDocuments(filter);
+      console.log('Applying filter:', JSON.stringify(filter));
 
-      // Return paginated response
-      res.status(200).json({
-        posts,
-        pagination: {
-          total,
-          page,
-          limit,
-          pages: Math.ceil(total / limit),
-          hasMore: page < Math.ceil(total / limit),
-        },
-      });
+      try {
+        // Execute the query with pagination
+        const posts = await this.model
+          .find(filter)
+          .sort({ createdAt: -1 }) // Sort by newest first
+          .skip(skip)
+          .limit(limit);
+
+        console.log(`Found ${posts.length} posts matching filter`);
+
+        // For any posts missing user info, try to fetch it
+        for (const post of posts) {
+          if (!post.user || !post.user.name) {
+            try {
+              const user = await userModel.findById(post.userId);
+              if (user) {
+                post.user = {
+                  _id: user._id.toString(),
+                  email: user.email,
+                  name: user.name || 'Anonymous',
+                  avatar: user.avatar,
+                };
+                await post.save();
+              }
+            } catch (err) {
+              console.error(`Failed to fetch user info for post ${post._id}:`, err);
+            }
+          }
+        }
+
+        // Get total count for pagination metadata
+        const total = await this.model.countDocuments(filter);
+
+        // Return paginated response
+        res.status(200).json({
+          posts,
+          pagination: {
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit),
+            hasMore: page < Math.ceil(total / limit),
+          },
+        });
+      } catch (queryError) {
+        console.error('Error executing paginated query:', queryError);
+
+        // Fallback to simple query without pagination
+        const allPosts = await this.model.find(filter).sort({ createdAt: -1 });
+
+        // Return as paginated response format
+        res.status(200).json({
+          posts: allPosts,
+          pagination: {
+            total: allPosts.length,
+            page: 1,
+            limit: allPosts.length,
+            pages: 1,
+            hasMore: false,
+          },
+        });
+      }
     } catch (error) {
       console.error('Error fetching paginated posts:', error);
-      res.status(500).json({ error: 'Failed to fetch posts' });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: 'Failed to fetch posts', message: errorMessage });
     }
   }
 
