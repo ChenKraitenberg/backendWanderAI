@@ -3,6 +3,7 @@ import postModel, { IPost } from '../models/posts_model';
 import userModel from '../models/user_model';
 import { Request, Response } from 'express';
 import BaseController from './base_controller';
+import mongoose from 'mongoose';
 
 class PostController extends BaseController<IPost> {
   constructor() {
@@ -231,27 +232,75 @@ class PostController extends BaseController<IPost> {
   }
 
   // Handle like functionality
-  async toggleLike(req: Request, res: Response) {
+  // In your postsController.ts file
+  async toggleLike(req: Request, res: Response): Promise<void> {
     try {
       const postId = req.params.id;
       const userId = req.params.userId; // From auth middleware
-
-      const post = await this.model.findById(postId);
-      if (!post) {
-        res.status(404).send('Post not found');
+      
+      console.log(`Toggle like for post ${postId} by user ${userId}`);
+      
+      if (!postId || !userId) {
+        console.error('Missing post ID or user ID');
+        res.status(400).json({ error: 'Missing post ID or user ID' });
         return;
       }
-
-      const isLiked = post.likes.includes(userId);
-
-      if (isLiked) {
-        post.likes = post.likes.filter((id) => id.toString() !== userId);
-      } else {
-        post.likes.push(userId);
+  
+      // Validate that both IDs are valid
+      if (!mongoose.Types.ObjectId.isValid(postId) || !mongoose.Types.ObjectId.isValid(userId)) {
+        console.error('Invalid post ID or user ID format');
+        res.status(400).json({ error: 'Invalid ID format' });
+        return;
       }
-
+  
+      const post = await this.model.findById(postId);
+      if (!post) {
+        console.error(`Post not found: ${postId}`);
+        res.status(404).json({ error: 'Post not found' });
+        return;
+      }
+  
+      // Initialize likes array if it doesn't exist
+      if (!Array.isArray(post.likes)) {
+        post.likes = [];
+      }
+  
+      // Log the current likes array for debugging
+      console.log(`Current likes for post ${postId}:`, post.likes);
+      
+      // Check if user has already liked this post
+      const isLiked = post.likes.some(id => id.toString() === userId.toString());
+      console.log(`User ${userId} has liked this post: ${isLiked}`);
+  
+      let message = '';
+  
+      if (isLiked) {
+        // Remove like - make sure we compare strings for equality
+        console.log(`Removing like from post ${postId} for user ${userId}`);
+        post.likes = post.likes.filter(id => id.toString() !== userId.toString());
+        message = 'Like removed';
+      } else {
+        // Add like
+        console.log(`Adding like to post ${postId} for user ${userId}`);
+        post.likes.push(userId);
+        message = 'Like added';
+      }
+  
+      // Log the updated likes array
+      console.log(`Updated likes for post ${postId}:`, post.likes);
+  
+      // Save to database
       await post.save();
-      res.status(200).json(post);
+      console.log(`${message} for post ${postId}. New likes count: ${post.likes.length}`);
+      
+      // Return updated post with the likes array
+      res.status(200).json({
+        _id: post._id,
+        likes: post.likes,
+        likesCount: post.likes.length,
+        isLiked: post.likes.some(id => id.toString() === userId.toString()),
+        message
+      });
     } catch (error) {
       console.error('Error toggling like:', error);
       res.status(500).json({ error: 'Failed to toggle like' });
