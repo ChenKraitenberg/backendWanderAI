@@ -4,6 +4,7 @@ import userModel from '../models/user_model';
 import { Request, Response } from 'express';
 import BaseController from './base_controller';
 import mongoose from 'mongoose';
+import { IComment } from '../models/comments_model';
 
 class PostController extends BaseController<IPost> {
   constructor() {
@@ -332,18 +333,24 @@ class PostController extends BaseController<IPost> {
         return;
       }
 
-      post.comments.push({
-        user: userId,
+      // Add comment with user details
+      const newComment = {
+        user: {
+          _id: user._id.toString(),
+          email: user.email,
+          name: user.name || 'Anonymous',
+          avatar: user.avatar
+        },
         text,
         createdAt: new Date(),
-      });
+        postId
+      };
 
+      post.comments.push(newComment);
       await post.save();
 
-      // Populate user info for the newly added comment
-      const updatedPost = await this.model.findById(postId).populate('comments.user', 'email name avatar');
-
-      res.status(200).json(updatedPost);
+      // Return the new comment with populated user info
+      res.status(200).json(newComment);
     } catch (error) {
       console.error('Error adding comment:', error);
       res.status(500).json({ error: 'Failed to add comment' });
@@ -355,13 +362,12 @@ class PostController extends BaseController<IPost> {
     try {
       const postId = req.params.id;
 
-      const post = await this.model.findById(postId).populate('comments.user', 'email name avatar');
-
-      if (!post) {
-        res.status(404).send('Post not found');
-        return;
-      }
-
+      const post = await this.model.findById(postId);
+    if (!post) {
+      res.status(404).send('Post not found');
+      return;
+    }
+    
       res.status(200).json(post.comments);
     } catch (error) {
       console.error('Error getting comments:', error);

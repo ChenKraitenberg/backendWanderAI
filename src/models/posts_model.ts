@@ -1,5 +1,6 @@
 // src/models/posts_model.ts
 import mongoose from 'mongoose';
+import { IComment } from './comments_model';
 const Schema = mongoose.Schema;
 
 export interface IPost extends mongoose.Document {
@@ -16,11 +17,7 @@ export interface IPost extends mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
   likes: string[];
-  comments: {
-    user: string;
-    text: string;
-    createdAt: Date;
-  }[];
+  comments: IComment[];
   owner: string;
   userId: string;
   user: {
@@ -90,18 +87,33 @@ const PostSchema = new Schema<IPost>({
   comments: [
     {
       user: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
+        _id: {
+          type: String,
+          required: true,
+        },
+        email: {
+          type: String,
+          required: true,
+        },
+        name: {
+          type: String,
+        },
+        avatar: {
+          type: String,
+        }
       },
       text: {
-        type: String,
-        required: true,
-      },
-      createdAt: {
-        type: Date,
-        default: Date.now,
-      },
+      type: String,
+      required: true,
+    },
+    postId: {
+      type: String,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
     },
   ],
   owner: {
