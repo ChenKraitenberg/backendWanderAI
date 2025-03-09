@@ -243,18 +243,21 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   });
 };
 
-// Social login handler
 const socialLogin = async (req: Request, res: Response) => {
   try {
     const { provider, token, email, name, avatar } = req.body;
 
+    console.log('Social login request received:', { provider, email, name });
+
     if (!token || !provider) {
+      console.log('Missing provider or token');
       res.status(400).json({ message: 'Provider and token are required' });
       return;
     }
 
     // Name is now required
     if (!name) {
+      console.log('Missing name in social login request');
       res.status(400).json({ message: 'Username is required' });
       return;
     }
@@ -269,22 +272,15 @@ const socialLogin = async (req: Request, res: Response) => {
         const googleResponse = await axios.get(`https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${token}`);
         const googleData = googleResponse.data as { email: string };
         socialEmail = googleData.email;
+        console.log('Verified Google token for email:', socialEmail);
 
         if (!socialEmail) {
+          console.log('Invalid Google token - no email returned');
           res.status(400).json({ message: 'Invalid Google token' });
           return;
         }
-      } else if (provider === 'facebook') {
-        // Verify Facebook token
-        const facebookResponse = await axios.get(`https://graph.facebook.com/me?fields=email,name&access_token=${token}`);
-        const facebookData = facebookResponse.data as { email: string };
-        socialEmail = facebookData.email;
-
-        if (!socialEmail) {
-          res.status(400).json({ message: 'Invalid Facebook token' });
-          return;
-        }
       } else {
+        console.log('Invalid provider:', provider);
         res.status(400).json({ message: 'Invalid provider' });
         return;
       }
@@ -294,37 +290,89 @@ const socialLogin = async (req: Request, res: Response) => {
       return;
     }
 
-    // Check if user exists with this email
-    let user = await userModel.findOne({ email: socialEmail || email });
+    // CRITICAL FIX: First look for a user with matching email, case insensitive
+    const emailToUse = socialEmail || email;
+    if (!emailToUse) {
+      console.log('No email available for user lookup');
+      res.status(400).json({ message: 'Email is required' });
+      return;
+    }
 
-    // If user doesn't exist, create one
-    if (!user) {
+    console.log('Looking for existing user with email:', emailToUse);
+
+    // Use a case-insensitive regex to find the user by email
+    let user = await userModel.findOne({
+      email: { $regex: new RegExp('^' + emailToUse.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') },
+    });
+
+    if (user) {
+      console.log('Existing user found with matching email:', user._id);
+
+      // Update the user information if needed
+      let needsUpdate = false;
+
+      // Update name if it was empty before
+      if (!user.name || user.name === 'Anonymous') {
+        console.log('Updating user name from', user.name, 'to', name);
+        user.name = name;
+        needsUpdate = true;
+      }
+
+      // Update avatar if none exists and one is provided
+      if (!user.avatar && avatar) {
+        console.log('Updating user avatar');
+        user.avatar = avatar;
+        needsUpdate = true;
+      }
+
+      // Update social provider if it wasn't set before
+      if (!user.socialProvider) {
+        console.log('Setting social provider to', provider);
+        user.socialProvider = provider;
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        console.log('Saving updated user information');
+        try {
+          await user.save();
+          console.log('User updated successfully');
+        } catch (saveError) {
+          console.error('Error updating user:', saveError);
+        }
+      }
+    } else {
+      // No existing user found, create a new one
+      console.log('No existing user found with email', emailToUse, '- creating new user');
       const randomPassword = crypto.randomBytes(20).toString('hex');
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
       user = await userModel.create({
-        email: socialEmail || email,
+        email: emailToUse,
         password: hashedPassword,
-        name: name, // Save the username
+        name: name,
         avatar: avatar || null,
         socialProvider: provider,
       });
-    } else {
-      // Update the user's name if it was provided
-      if (name && (!user.name || user.name === 'Anonymous')) {
-        user.name = name;
-        await user.save();
-      }
+      console.log('New user created with ID:', user._id);
     }
 
     // Generate tokens
     const tokens = generateTokens(user);
     if (!tokens) {
+      console.log('Failed to generate authentication tokens');
       res.status(500).json({ message: 'Failed to generate authentication tokens' });
       return;
     }
 
+    // Add refresh token to user
+    if (!user.refreshToken) {
+      user.refreshToken = [];
+    }
+    user.refreshToken.push(tokens.refreshToken);
     await user.save();
+
+    console.log('Login successful for user ID:', user._id);
 
     // Return tokens and user info
     res.status(200).json({
@@ -473,6 +521,30 @@ const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+const checkUserExists = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ message: 'Email is required', exists: false });
+      return;
+    }
+
+    // Check if user exists with this email
+    const existingUser = await userModel.findOne({ email });
+
+    // Return whether the user exists and their ID if they do
+    // The ID can be used for additional checks or account linking
+    res.status(200).json({
+      exists: !!existingUser,
+      userId: existingUser ? existingUser._id : undefined,
+    });
+  } catch (error) {
+    console.error('Error checking user existence:', error);
+    res.status(500).json({ message: 'Server error', exists: false });
+  }
+};
+
 export default {
   register,
   login,
@@ -482,4 +554,5 @@ export default {
   requestPasswordReset,
   validateResetToken,
   resetPassword,
+  checkUserExists,
 };

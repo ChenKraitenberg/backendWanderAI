@@ -327,4 +327,38 @@ router.get('/validate-reset-token/:token', authController.validateResetToken);
  */
 router.post('/reset-password', authController.resetPassword);
 
+/**
+ * @swagger
+ * /auth/check-user:
+ *   post:
+ *     summary: Check if a user exists
+ *     description: Checks if a user exists with the provided email
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Check completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 exists:
+ *                   type: boolean
+ *       '400':
+ *         description: Missing email
+ *       '500':
+ *         description: Server error
+ */
+router.post('/check-user', authController.checkUserExists);
+
 export default router;
