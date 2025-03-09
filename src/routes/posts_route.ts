@@ -160,6 +160,9 @@ router.post('/:id/comment', authMiddleware, postsController.addComment.bind(post
 // Get comments for a post
 router.get('/:id/comments', postsController.getComments.bind(postsController));
 
+// // Get by user id
+router.get('/user/:id', postsController.getByUserId.bind(postsController));
+
 /**
  * @swagger
  * /posts/paginated:

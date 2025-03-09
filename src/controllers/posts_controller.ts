@@ -82,21 +82,61 @@ class PostController extends BaseController<IPost> {
   }
 
   // Override getAll to populate user info if not already present
-  async getAll(req: Request, res: Response) {
+  async getAll(req: Request, res: Response): Promise<void> {
     try {
-      // Check for userId or owner filter in query parameters
+      // Check for various user-related query parameters
       const userId = req.query.userId as string;
       const owner = req.query.owner as string;
+      const userEmail = req.query.email as string;
+
+      console.log('Post query parameters:', { userId, owner, userEmail });
 
       let query = {};
+      let posts = [];
+
+      // Build query based on provided parameters
       if (userId) {
-        query = { userId: userId };
+        query = {
+          $or: [{ userId: userId }, { 'user._id': userId }, { owner: userId }],
+        };
       } else if (owner) {
-        query = { owner: owner };
+        query = {
+          $or: [{ owner: owner }, { userId: owner }, { 'user._id': owner }],
+        };
+      } else if (userEmail) {
+        // Case-insensitive email search
+        query = {
+          'user.email': { $regex: new RegExp('^' + userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') },
+        };
       }
 
-      // Get posts and ensure each one has user info
-      const posts = await this.model.find(query);
+      // Log the final query for debugging
+      console.log('MongoDB query:', JSON.stringify(query));
+
+      // Execute the query
+      if (Object.keys(query).length > 0) {
+        posts = await this.model.find(query);
+        console.log(`Found ${posts.length} posts matching query`);
+      } else {
+        // No specific user filter, get all posts
+        posts = await this.model.find();
+        console.log(`Returning all ${posts.length} posts`);
+      }
+
+      // Add a new endpoint for user-specific posts
+      if (req.path.startsWith('/user/') && req.params.userId) {
+        const userIdFromPath = req.params.userId;
+        console.log(`Getting posts specifically for user ID: ${userIdFromPath}`);
+
+        // Comprehensive query to find all posts by this user
+        const userPosts = await this.model.find({
+          $or: [{ userId: userIdFromPath }, { owner: userIdFromPath }, { 'user._id': userIdFromPath }],
+        });
+
+        console.log(`Found ${userPosts.length} posts for user ${userIdFromPath}`);
+        res.status(200).json(userPosts);
+        return;
+      }
 
       // For any posts missing user info, try to fetch it
       for (const post of posts) {
@@ -237,47 +277,47 @@ class PostController extends BaseController<IPost> {
     try {
       const postId = req.params.id;
       const userId = req.params.userId; // From auth middleware
-      
+
       console.log(`Toggle like for post ${postId} by user ${userId}`);
-      
+
       if (!postId || !userId) {
         console.error('Missing post ID or user ID');
         res.status(400).json({ error: 'Missing post ID or user ID' });
         return;
       }
-  
+
       // Validate that both IDs are valid
       if (!mongoose.Types.ObjectId.isValid(postId) || !mongoose.Types.ObjectId.isValid(userId)) {
         console.error('Invalid post ID or user ID format');
         res.status(400).json({ error: 'Invalid ID format' });
         return;
       }
-  
+
       const post = await this.model.findById(postId);
       if (!post) {
         console.error(`Post not found: ${postId}`);
         res.status(404).json({ error: 'Post not found' });
         return;
       }
-  
+
       // Initialize likes array if it doesn't exist
       if (!Array.isArray(post.likes)) {
         post.likes = [];
       }
-  
+
       // Log the current likes array for debugging
       console.log(`Current likes for post ${postId}:`, post.likes);
-      
+
       // Check if user has already liked this post
-      const isLiked = post.likes.some(id => id.toString() === userId.toString());
+      const isLiked = post.likes.some((id) => id.toString() === userId.toString());
       console.log(`User ${userId} has liked this post: ${isLiked}`);
-  
+
       let message = '';
-  
+
       if (isLiked) {
         // Remove like - make sure we compare strings for equality
         console.log(`Removing like from post ${postId} for user ${userId}`);
-        post.likes = post.likes.filter(id => id.toString() !== userId.toString());
+        post.likes = post.likes.filter((id) => id.toString() !== userId.toString());
         message = 'Like removed';
       } else {
         // Add like
@@ -285,21 +325,21 @@ class PostController extends BaseController<IPost> {
         post.likes.push(userId);
         message = 'Like added';
       }
-  
+
       // Log the updated likes array
       console.log(`Updated likes for post ${postId}:`, post.likes);
-  
+
       // Save to database
       await post.save();
       console.log(`${message} for post ${postId}. New likes count: ${post.likes.length}`);
-      
+
       // Return updated post with the likes array
       res.status(200).json({
         _id: post._id,
         likes: post.likes,
         likesCount: post.likes.length,
-        isLiked: post.likes.some(id => id.toString() === userId.toString()),
-        message
+        isLiked: post.likes.some((id) => id.toString() === userId.toString()),
+        message,
       });
     } catch (error) {
       console.error('Error toggling like:', error);
@@ -366,6 +406,24 @@ class PostController extends BaseController<IPost> {
     } catch (error) {
       console.error('Error getting comments:', error);
       res.status(500).json({ error: 'Failed to get comments' });
+    }
+  }
+
+  async getByUserId(req: Request, res: Response) {
+    try {
+      const userId = req.params.userId || req.query.userId;
+      console.log(`Getting posts for user ID: ${userId}`);
+
+      // The query should check both userId and owner fields
+      const posts = await this.model.find({
+        $or: [{ userId: userId }, { owner: userId }],
+      });
+
+      console.log(`Found ${posts.length} posts for user ${userId}`);
+      res.status(200).send(posts);
+    } catch (error) {
+      console.error('Error getting posts by user ID:', error);
+      res.status(400).send(error);
     }
   }
 }

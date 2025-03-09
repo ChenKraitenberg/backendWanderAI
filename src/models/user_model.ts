@@ -9,7 +9,7 @@ export interface IUser {
   refreshToken?: string[];
   avatar?: string;
   name: string; // Changed from optional to required
-  socialProvider?: 'google' | 'facebook' | null;
+  socialProvider?: 'google' | null;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
 }
@@ -37,7 +37,7 @@ const userSchema = new Schema<IUser>({
   },
   socialProvider: {
     type: String,
-    enum: ['google', 'facebook', null],
+    enum: ['google', null],
     default: null,
   },
   resetPasswordToken: {
