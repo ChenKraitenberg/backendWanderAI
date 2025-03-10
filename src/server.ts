@@ -12,6 +12,7 @@ import postsRoute from './routes/posts_route';
 import commentsRoute from './routes/comments_route';
 import authRoute from './routes/auth_route';
 import fileRoute from './routes/file_route'; // נתיב להעלאת קבצים
+import wishlistRoute from './routes/wishlist_route';
 import fileAccessRoute from './routes/file-access-route'; // נתיב לגישה לקבצים
 import cors from 'cors';
 
