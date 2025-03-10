@@ -48,6 +48,7 @@ app.use((req, res, next) => {
 app.use('/posts', postsRoute);
 app.use('/comments', commentsRoute);
 app.use('/auth', authRoute);
+app.use('/wishlist', wishlistRoute);
 
 // Serve static files
 app.use('/uploads', express.static('public/uploads'));
