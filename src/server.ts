@@ -12,6 +12,7 @@ import postsRoute from './routes/posts_route';
 import commentsRoute from './routes/comments_route';
 import authRoute from './routes/auth_route';
 import fileRoute from './routes/file_route';
+import wishlistRoute from './routes/wishlist_route';
 import cors from 'cors';
 
 app.use(express.json());
@@ -48,6 +49,7 @@ app.use((req, res, next) => {
 app.use('/posts', postsRoute);
 app.use('/comments', commentsRoute);
 app.use('/auth', authRoute);
+app.use('/wishlist', wishlistRoute);
 
 // Serve static files
 app.use('/uploads', express.static('public/uploads'));
