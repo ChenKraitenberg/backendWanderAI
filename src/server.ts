@@ -11,7 +11,8 @@ import swaggerUI from 'swagger-ui-express';
 import postsRoute from './routes/posts_route';
 import commentsRoute from './routes/comments_route';
 import authRoute from './routes/auth_route';
-import fileRoute from './routes/file_route';
+import fileRoute from './routes/file_route'; // נתיב להעלאת קבצים
+import fileAccessRoute from './routes/file-access-route'; // נתיב לגישה לקבצים
 import cors from 'cors';
 
 app.use(express.json());
@@ -40,7 +41,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
   res.header('Access-Control-Allow-Methods', '*');
-  res.header('Access-Control-Allow-Headers', '*');
   next();
 });
 
@@ -51,7 +51,12 @@ app.use('/auth', authRoute);
 
 // Serve static files
 app.use('/uploads', express.static('public/uploads'));
+
+// נתיבי קבצים
+// הנתיב /file עבור קריאות POST לטעינת קבצים (למשל: POST http://localhost:3060/file/upload)
+// הנתיב /file-access עבור גישה לקבצים (למשל: GET http://localhost:3060/file-access/filename.jpg)
 app.use('/file', fileRoute);
+app.use('/file-access', fileAccessRoute);
 
 app.get('/about', (req, res) => {
   res.send('Hello World!');
