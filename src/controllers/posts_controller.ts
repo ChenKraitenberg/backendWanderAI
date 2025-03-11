@@ -48,6 +48,7 @@ class PostController extends BaseController<IPost> {
   }
 
   // Modified to preserve the post owner and user info on update
+  // Modified to preserve the post owner and user info on update
   async update(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.params.userId;
@@ -66,12 +67,15 @@ class PostController extends BaseController<IPost> {
         return;
       }
 
+      // Check if the request includes updated user info
+      const userInfo = req.body.user || existingPost.user;
+
       // Preserve user info in the update
       const post = {
         ...req.body,
         owner: userId,
         userId: userId,
-        user: existingPost.user, // Keep the original user info
+        user: userInfo, // Use updated user info if provided, otherwise keep original
       };
 
       req.body = post;
@@ -379,11 +383,11 @@ class PostController extends BaseController<IPost> {
           _id: user._id.toString(),
           email: user.email,
           name: user.name || 'Anonymous',
-          avatar: user.avatar
+          avatar: user.avatar,
         },
         text,
         createdAt: new Date(),
-        postId
+        postId,
       };
 
       post.comments.push(newComment);
@@ -403,11 +407,11 @@ class PostController extends BaseController<IPost> {
       const postId = req.params.id;
 
       const post = await this.model.findById(postId);
-    if (!post) {
-      res.status(404).send('Post not found');
-      return;
-    }
-    
+      if (!post) {
+        res.status(404).send('Post not found');
+        return;
+      }
+
       res.status(200).json(post.comments);
     } catch (error) {
       console.error('Error getting comments:', error);
