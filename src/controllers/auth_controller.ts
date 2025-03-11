@@ -520,7 +520,6 @@ const checkUserExists = async (req: Request, res: Response): Promise<void> => {
     const existingUser = await userModel.findOne({ email });
 
     // Return whether the user exists and their ID if they do
-    // The ID can be used for additional checks or account linking
     res.status(200).json({
       exists: !!existingUser,
       userId: existingUser ? existingUser._id : undefined,
