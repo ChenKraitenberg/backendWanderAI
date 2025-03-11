@@ -507,6 +507,28 @@ const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+// const checkUserExists = async (req: Request, res: Response): Promise<void> => {
+//   try {
+//     const { email } = req.body;
+
+//     if (!email) {
+//       res.status(400).json({ message: 'Email is required', exists: false });
+//       return;
+//     }
+
+//     // Check if user exists with this email
+//     const existingUser = await userModel.findOne({ email });
+
+//     // Return whether the user exists and their ID if they do
+//     res.status(200).json({
+//       exists: !!existingUser,
+//       userId: existingUser ? existingUser._id : undefined,
+//     });
+//   } catch (error) {
+//     console.error('Error checking user existence:', error);
+//     res.status(500).json({ message: 'Server error', exists: false });
+//   }
+// };
 const checkUserExists = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
@@ -516,10 +538,12 @@ const checkUserExists = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if user exists with this email
-    const existingUser = await userModel.findOne({ email });
+    // Check if user exists with this email (case insensitive)
+    const existingUser = await userModel.findOne({
+      email: { $regex: new RegExp('^' + email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') },
+    });
 
-    // Return whether the user exists and their ID if they do
+    // Return whether the user exists
     res.status(200).json({
       exists: !!existingUser,
       userId: existingUser ? existingUser._id : undefined,
