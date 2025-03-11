@@ -1,18 +1,18 @@
-// export default router;
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
 import path from 'path';
-import fs from 'fs';
-import { spawn } from 'child_process';
+import fs from 'fs/promises';
+import { readFileSync } from 'fs';
+import heicConvert from 'heic-convert';
 
 const router = express.Router();
-const upload = multer({ dest: 'temp/' });
 
-// Helper function to detect HEIC/HEIF files
+//
+// Helper function for HEIC/HEIF detection
+//
 function isHeicOrHeif(buffer: Buffer): boolean {
   try {
-    // Check for HEIC/HEIF signature in the file header
     const header = buffer.slice(0, 12).toString('ascii');
     return header.includes('ftyp') && (header.includes('heic') || header.includes('heix') || header.includes('hevc') || header.includes('mif1'));
   } catch (error) {
@@ -20,92 +20,102 @@ function isHeicOrHeif(buffer: Buffer): boolean {
   }
 }
 
-// Helper function to convert HEIC to JPEG using sips (macOS)
-interface ConvertHeicToJpeg {
-  (inputPath: string, outputPath: string): Promise<void>;
-}
+//
+// Update file storage and filtering to allow HEIC/HEIF files
+//
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const tempDir = path.join(__dirname, '..', '..', 'temp');
+    try {
+      await fs.mkdir(tempDir, { recursive: true });
+      cb(null, tempDir);
+    } catch (err: any) {
+      cb(err as Error, tempDir);
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const normalizedExt = path.extname(file.originalname).toLowerCase();
+    cb(null, file.fieldname + '-' + uniqueSuffix + normalizedExt);
+  },
+});
 
-const convertHeicToJpeg: ConvertHeicToJpeg = (inputPath, outputPath) => {
-  return new Promise((resolve, reject) => {
-    // Using macOS's sips command to convert
-    const sips = spawn('sips', ['-s', 'format', 'jpeg', inputPath, '--out', outputPath]);
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const normalizedMimetype = file.mimetype.toLowerCase();
+    const normalizedOriginalname = file.originalname.toLowerCase();
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
 
-    sips.on('close', (code: number) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`sips process exited with code ${code}`));
-      }
-    });
+    const hasValidType = allowedTypes.includes(normalizedMimetype);
+    const hasValidExtension = allowedExtensions.some((ext) => normalizedOriginalname.endsWith(ext));
 
-    sips.on('error', (err: Error) => {
-      reject(err);
-    });
-  });
-};
+    if (hasValidType || hasValidExtension) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type or extension. Allowed: JPG, JPEG, PNG, GIF, WebP, HEIC, HEIF'));
+    }
+  },
+});
 
+//
+// Updated /upload route with HEIC/HEIF conversion logic using heic-convert
+//
 router.post('/upload', upload.single('image'), async (req, res): Promise<void> => {
   try {
     const file = req.file;
     if (!file) {
-      res.status(400).json({ message: 'לא נבחר קובץ' });
+      res.status(400).json({ message: 'No file uploaded' });
       return;
     }
 
-    // יצירת שם קובץ חדש לפי timestamp
     const newFilename = Date.now() + '.jpg';
-    const finalPath = path.join(__dirname, '..', '..', 'public', 'uploads', newFilename);
+    const uploadsDir = path.join(__dirname, '..', '..', 'public', 'uploads');
+    await fs.mkdir(uploadsDir, { recursive: true });
+    const finalPath = path.join(uploadsDir, newFilename);
 
-    // Check if the file is HEIC/HEIF
-    const fileBuffer = fs.readFileSync(file.path);
+    // Read file buffer for checking and possible conversion
+    const fileBuffer = readFileSync(file.path);
     const isHeic = isHeicOrHeif(fileBuffer) || file.originalname.toLowerCase().endsWith('.heic') || file.originalname.toLowerCase().endsWith('.heif');
 
     if (isHeic) {
-      // For macOS - use sips for conversion
-      const tempJpegPath = file.path + '.jpg';
       try {
-        await convertHeicToJpeg(file.path, tempJpegPath);
-
-        // Now process the converted jpeg with sharp and maintain orientation
-        await sharp(tempJpegPath)
-          .rotate() // Correct rotation based on EXIF data
-          .jpeg({ quality: 90 })
-          .toFile(finalPath);
-
-        // Clean up the temp jpeg
-        fs.unlinkSync(tempJpegPath);
+        // Convert HEIC to JPEG using heic-convert
+        const outputBuffer = await heicConvert({
+          buffer: fileBuffer, // the HEIC file buffer
+          format: 'JPEG', // output format
+          quality: 0.9, // quality between 0 and 1
+        });
+        // Process the converted image with sharp (rotate based on EXIF, etc.)
+        await sharp(outputBuffer).rotate().jpeg({ quality: 90 }).toFile(finalPath);
       } catch (heicError) {
-        console.error('Error converting HEIC:', heicError);
-
-        // Fallback - try direct processing with sharp anyway
-        try {
-          await sharp(file.path)
-            .rotate() // Try to maintain correct orientation
-            .jpeg({ quality: 90 })
-            .toFile(finalPath);
-        } catch (sharpError) {
-          throw new Error(`Failed to process HEIC image: ${(heicError as Error).message}, Sharp fallback also failed: ${(sharpError as Error).message}`);
-        }
+        console.error('Error converting HEIC with heic-convert:', heicError);
+        // Fallback: try processing directly with sharp
+        await sharp(file.path).rotate().jpeg({ quality: 90 }).toFile(finalPath);
       }
     } else {
-      // Process regular image formats with rotation handling
-      await sharp(file.path)
-        .rotate() // This automatically rotates based on EXIF data
-        .jpeg({ quality: 90 })
-        .toFile(finalPath);
+      // Process non-HEIC images normally
+      await sharp(file.path).rotate().jpeg({ quality: 90 }).toFile(finalPath);
     }
 
-    // מחיקת הקובץ הזמני
-    fs.unlinkSync(file.path);
+    await fs.unlink(file.path).catch((err) => {
+      console.warn('Could not delete temporary file:', err);
+    });
 
-    // החזרת הנתיב ללקוח
-    res.json({ url: `/uploads/${newFilename}` });
+    res.json({
+      url: `/uploads/${newFilename}`,
+      message: 'File uploaded successfully',
+    });
   } catch (error) {
-    console.error('Error processing image:', error);
+    console.error('Upload route error:', error);
+    if (req.file) {
+      await fs.unlink(req.file.path).catch(() => {});
+    }
     res.status(500).json({
-      message: 'שגיאה בעיבוד הקובץ',
-      error: (error as Error).message,
-      serverErrorDetails: error,
+      message: 'Internal server error during file upload',
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
