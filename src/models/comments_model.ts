@@ -1,23 +1,31 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
-export interface IComment {
-  _id?: string;
-  text: string;  // Changed from 'comment' to 'text' for consistency
-  user: {        // Changed from 'owner' to 'user' object
+export interface IComment extends mongoose.Document {
+  text: string;
+  postId: string;
+  createdAt: Date;
+  user: {
     _id: string;
     email: string;
     name?: string;
     avatar?: string;
   };
-  postId: string;
-  createdAt: Date;
-};
+}
 
-const commentsSchema = new Schema<IComment>({
+const CommentSchema = new Schema<IComment>({
   text: {
     type: String,
     required: true,
+    maxlength: 5000,
+  },
+  postId: {
+    type: String,
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
   },
   user: {
     _id: {
@@ -28,19 +36,14 @@ const commentsSchema = new Schema<IComment>({
       type: String,
       required: true,
     },
-    name: String,
-    avatar: String,
+    name: {
+      type: String,
+    },
+    avatar: {
+      type: String,
+    },
   },
-  postId: {
-    type: String,
-    required: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  }
 });
 
-const commentModel = mongoose.model<IComment>("Comments", commentsSchema);
-
-export default commentModel;
+const CommentModel = mongoose.model<IComment>('Comment', CommentSchema);
+export default CommentModel;

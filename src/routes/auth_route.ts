@@ -8,60 +8,38 @@ const router = express.Router();
 /**
  * @swagger
  * tags:
- *   name: Auth
- *   description: The Authentication API
- */
-
-/**
- * @swagger
- * components:
- *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
- */
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     User:
- *       type: object
- *       required:
- *         - email
- *         - password
- *       properties:
- *         email:
- *           type: string
- *           description: The user email
- *         password:
- *           type: string
- *           description: The user password
- *       example:
- *         email: 'bob@gmail.com'
- *         password: '123456'
+ *   name: Authentication
+ *   description: User authentication endpoints
  */
 
 /**
  * @swagger
  * /auth/register:
  *   post:
- *     summary: registers a new user
- *     tags: [Auth]
+ *     summary: Register a new user
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/User'
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - name
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               name:
+ *                 type: string
  *     responses:
- *       200:
- *         description: The new user
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
+ *       201:
+ *         description: User registered successfully
+ *       400:
+ *         description: Invalid input or user already exists
  */
 router.post('/register', authController.register);
 
@@ -69,37 +47,27 @@ router.post('/register', authController.register);
  * @swagger
  * /auth/login:
  *   post:
- *     summary: User login
- *     description: Authenticates a user and returns JWT tokens
- *     tags:
- *       - Auth
+ *     summary: Login user
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/User'
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
  *     responses:
- *       '200':
- *         description: Successful login
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 accessToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                 refreshToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                 _id:
- *                   type: string
- *                   example: 60d0fe4f5311236168a109ca
- *       '400':
- *         description: Invalid input or wrong email or password
- *       '500':
- *         description: Internal server error
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
  */
 router.post('/login', authController.login);
 
@@ -107,29 +75,11 @@ router.post('/login', authController.login);
  * @swagger
  * /auth/logout:
  *   post:
- *     summary: User logout
- *     description: Logs out a user by invalidating the refresh token
- *     tags:
- *       - Auth
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               refreshToken:
- *                 type: string
- *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *     summary: Logout user
+ *     tags: [Authentication]
  *     responses:
- *       '200':
- *         description: Successful logout
- *       '400':
- *         description: Invalid refresh token
- *       '401':
- *         description: Unauthorized
- *       '500':
- *         description: Internal server error
+ *       200:
+ *         description: Logout successful
  */
 router.post('/logout', authController.logout);
 
@@ -137,10 +87,67 @@ router.post('/logout', authController.logout);
  * @swagger
  * /auth/refresh:
  *   post:
- *     summary: Refresh JWT tokens
- *     description: Refreshes the access token using the refresh token
- *     tags:
- *       - Auth
+ *     summary: Refresh access token
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *       401:
+ *         description: Invalid refresh token
+ */
+router.post('/refresh', authController.refresh);
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user information
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User information retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.userId;
+
+    // If we already sent a response via authMiddleware, don't try to send another one
+    if (res.headersSent) {
+      return;
+    }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      res.status(400).send('User not found');
+      return;
+    }
+
+    res.status(200).json({
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+    });
+  } catch (error) {
+    // Check if headers were already sent
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+});
+
+/**
+ * @swagger
+ * /auth/me:
+ *   put:
+ *     summary: Update user information
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -148,50 +155,16 @@ router.post('/logout', authController.logout);
  *           schema:
  *             type: object
  *             properties:
- *               refreshToken:
+ *               name:
  *                 type: string
- *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *               avatar:
+ *                 type: string
  *     responses:
- *       '200':
- *         description: Tokens refreshed successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 accessToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                 refreshToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *       '400':
- *         description: Invalid refresh token
- *       '401':
+ *       200:
+ *         description: User information updated successfully
+ *       401:
  *         description: Unauthorized
- *       '500':
- *         description: Internal server error
  */
-router.post('/refresh', authController.refresh);
-
-router.get('/me', authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const user = await userModel.findById(req.params.userId);
-    if (!user) {
-      res.status(400).send('Access Denied');
-      return;
-    }
-    // מחזירים רק מידע רלוונטי
-    res.json({
-      _id: user._id,
-      email: user.email,
-      avatar: user.avatar,
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
 router.put('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = await userModel.findByIdAndUpdate(req.params.userId, req.body, { new: true });
@@ -209,47 +182,32 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// Social Login
 /**
  * @swagger
  * /auth/social-login:
  *   post:
- *     summary: Login or register with social provider
- *     description: Authenticates a user with Google or Facebook token
- *     tags:
- *       - Auth
+ *     summary: Login with social provider
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - provider
+ *               - token
  *             properties:
  *               provider:
  *                 type: string
  *                 enum: [google, facebook]
  *               token:
  *                 type: string
- *               email:
- *                 type: string
- *               name:
- *                 type: string
- *               avatar:
- *                 type: string
  *     responses:
- *       '200':
- *         description: Successful login
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 accessToken:
- *                   type: string
- *                 refreshToken:
- *                   type: string
- *                 _id:
- *                   type: string
+ *       200:
+ *         description: Social login successful
+ *       401:
+ *         description: Invalid social token
  */
 router.post('/social-login', authController.socialLogin);
 
@@ -258,22 +216,22 @@ router.post('/social-login', authController.socialLogin);
  * /auth/request-reset:
  *   post:
  *     summary: Request password reset
- *     description: Sends a password reset email with a token
- *     tags:
- *       - Auth
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - email
  *             properties:
  *               email:
  *                 type: string
  *     responses:
- *       '200':
- *         description: Reset email sent
- *       '404':
+ *       200:
+ *         description: Password reset email sent
+ *       404:
  *         description: Email not found
  */
 router.post('/request-reset', authController.requestPasswordReset);
@@ -283,9 +241,7 @@ router.post('/request-reset', authController.requestPasswordReset);
  * /auth/validate-reset-token/{token}:
  *   get:
  *     summary: Validate reset token
- *     description: Checks if a password reset token is valid
- *     tags:
- *       - Auth
+ *     tags: [Authentication]
  *     parameters:
  *       - in: path
  *         name: token
@@ -293,9 +249,9 @@ router.post('/request-reset', authController.requestPasswordReset);
  *         schema:
  *           type: string
  *     responses:
- *       '200':
+ *       200:
  *         description: Token is valid
- *       '400':
+ *       400:
  *         description: Invalid or expired token
  */
 router.get('/validate-reset-token/:token', authController.validateResetToken);
@@ -304,25 +260,26 @@ router.get('/validate-reset-token/:token', authController.validateResetToken);
  * @swagger
  * /auth/reset-password:
  *   post:
- *     summary: Reset password
- *     description: Resets a user's password with a valid token
- *     tags:
- *       - Auth
+ *     summary: Reset password with token
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - token
+ *               - password
  *             properties:
  *               token:
  *                 type: string
- *               newPassword:
+ *               password:
  *                 type: string
  *     responses:
- *       '200':
- *         description: Password successfully reset
- *       '400':
+ *       200:
+ *         description: Password reset successful
+ *       400:
  *         description: Invalid token or password
  */
 router.post('/reset-password', authController.resetPassword);
@@ -331,68 +288,25 @@ router.post('/reset-password', authController.resetPassword);
  * @swagger
  * /auth/check-user:
  *   post:
- *     summary: Check if a user exists
- *     description: Checks if a user exists with the provided email
- *     tags:
- *       - Auth
+ *     summary: Check if user exists
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - email
  *             properties:
  *               email:
  *                 type: string
  *     responses:
- *       '200':
- *         description: Check completed
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 exists:
- *                   type: boolean
- *       '400':
- *         description: Missing email
- *       '500':
- *         description: Server error
+ *       200:
+ *         description: User exists status
  */
 router.post('/check-user', authController.checkUserExists);
 
-/**
- * @swagger
- * /auth/check-user:
- *   post:
- *     summary: Check if a user exists
- *     description: Checks if a user exists with the provided email
- *     tags:
- *       - Auth
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *     responses:
- *       '200':
- *         description: Check completed
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 exists:
- *                   type: boolean
- *       '400':
- *         description: Missing email
- *       '500':
- *         description: Server error
- */
-router.post('/check-user', authController.checkUserExists);
+// Removing duplicate route
 
 export default router;

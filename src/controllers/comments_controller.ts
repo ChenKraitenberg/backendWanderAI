@@ -1,8 +1,20 @@
-import commentModel from "../models/comments_model";
-import { Request, Response } from "express";
-import BaseController from "./base_controller";
+// // src/controllers/comments_controller.ts
+// import commentModel, { IComment } from '../models/comments_model';
+// import { Request, Response } from 'express';
+// import createController from './base_controller';
 
-const commentsController = new BaseController(commentModel);
+// const commentsController = new createController<IComment>(commentModel);
 
+// export default commentsController;
+// src/controllers/comments_controller.ts
+import commentModel, { IComment } from '../models/comments_model';
+import { Request, Response } from 'express';
+import BaseController from './base_controller';
 
-export default commentsController;
+class CommentsController extends BaseController<IComment> {
+  constructor() {
+    super(commentModel);
+  }
+}
+
+export default new CommentsController();

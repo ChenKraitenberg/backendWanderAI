@@ -50,176 +50,43 @@ const express_1 = __importDefault(require("express"));
 const auth_controller_1 = __importStar(require("../controllers/auth_controller"));
 const user_model_1 = __importDefault(require("../models/user_model"));
 const router = express_1.default.Router();
-/**
- * @swagger
- * tags:
- *   name: Auth
- *   description: The Authentication API
- */
-/**
- * @swagger
- * components:
- *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
- */
-/**
- * @swagger
- * components:
- *   schemas:
- *     User:
- *       type: object
- *       required:
- *         - email
- *         - password
- *       properties:
- *         email:
- *           type: string
- *           description: The user email
- *         password:
- *           type: string
- *           description: The user password
- *       example:
- *         email: 'bob@gmail.com'
- *         password: '123456'
- */
-/**
- * @swagger
- * /auth/register:
- *   post:
- *     summary: registers a new user
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/User'
- *     responses:
- *       200:
- *         description: The new user
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- */
 router.post('/register', auth_controller_1.default.register);
-/**
- * @swagger
- * /auth/login:
- *   post:
- *     summary: User login
- *     description: Authenticates a user and returns JWT tokens
- *     tags:
- *       - Auth
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/User'
- *     responses:
- *       '200':
- *         description: Successful login
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 accessToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                 refreshToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                 _id:
- *                   type: string
- *                   example: 60d0fe4f5311236168a109ca
- *       '400':
- *         description: Invalid input or wrong email or password
- *       '500':
- *         description: Internal server error
- */
 router.post('/login', auth_controller_1.default.login);
-/**
- * @swagger
- * /auth/logout:
- *   post:
- *     summary: User logout
- *     description: Logs out a user by invalidating the refresh token
- *     tags:
- *       - Auth
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               refreshToken:
- *                 type: string
- *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *     responses:
- *       '200':
- *         description: Successful logout
- *       '400':
- *         description: Invalid refresh token
- *       '401':
- *         description: Unauthorized
- *       '500':
- *         description: Internal server error
- */
 router.post('/logout', auth_controller_1.default.logout);
-/**
- * @swagger
- * /auth/refresh:
- *   post:
- *     summary: Refresh JWT tokens
- *     description: Refreshes the access token using the refresh token
- *     tags:
- *       - Auth
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               refreshToken:
- *                 type: string
- *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *     responses:
- *       '200':
- *         description: Tokens refreshed successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 accessToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                 refreshToken:
- *                   type: string
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *       '400':
- *         description: Invalid refresh token
- *       '401':
- *         description: Unauthorized
- *       '500':
- *         description: Internal server error
- */
 router.post('/refresh', auth_controller_1.default.refresh);
 router.get('/me', auth_controller_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const user = yield user_model_1.default.findById(req.params.userId);
+        const userId = req.params.userId;
+        // If we already sent a response via authMiddleware, don't try to send another one
+        if (res.headersSent) {
+            return;
+        }
+        const user = yield user_model_1.default.findById(userId);
+        if (!user) {
+            res.status(400).send('User not found');
+            return;
+        }
+        res.status(200).json({
+            _id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+        });
+    }
+    catch (error) {
+        // Check if headers were already sent
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Internal server error' });
+        }
+    }
+}));
+router.put('/me', auth_controller_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const user = yield user_model_1.default.findByIdAndUpdate(req.params.userId, req.body, { new: true });
         if (!user) {
             res.status(400).send('Access Denied');
             return;
         }
-        // מחזירים רק מידע רלוונטי
         res.json({
             _id: user._id,
             email: user.email,
@@ -230,5 +97,11 @@ router.get('/me', auth_controller_1.authMiddleware, (req, res) => __awaiter(void
         res.status(500).json({ message: 'Internal server error' });
     }
 }));
+router.post('/social-login', auth_controller_1.default.socialLogin);
+router.post('/request-reset', auth_controller_1.default.requestPasswordReset);
+router.get('/validate-reset-token/:token', auth_controller_1.default.validateResetToken);
+router.post('/reset-password', auth_controller_1.default.resetPassword);
+router.post('/check-user', auth_controller_1.default.checkUserExists);
+router.post('/check-user', auth_controller_1.default.checkUserExists);
 exports.default = router;
 //# sourceMappingURL=auth_route.js.map

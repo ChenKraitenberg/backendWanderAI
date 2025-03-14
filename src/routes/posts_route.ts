@@ -1,101 +1,113 @@
 import express from 'express';
-const router = express.Router();
 import postsController from '../controllers/posts_controller';
 import { authMiddleware } from '../controllers/auth_controller';
+
+const router = express.Router();
 
 /**
  * @swagger
  * tags:
  *   name: Posts
- *   description: The Posts managing API
+ *   description: Post management endpoints
  */
 
 /**
  * @swagger
- * components:
- *   schemas:
- *     Post:
- *       type: object
- *       required:
- *         - title
- *         - content
- *       properties:
- *         _id:
- *           type: string
- *           example: 60d0fe4f5311236168a109ca
- *         title:
- *           type: string
- *           example: My First Post
- *         content:
- *           type: string
- *           example: This is the content of the post.
- *         author:
- *           type: string
- *           example: 60d0fe4f5311236168a109ca
- */
-
-/**
- * @swagger
- * /posts:
+ * /api/posts/paginated:
  *   get:
- *     summary: Get all posts
- *     description: Retrieves a list of all posts
- *     tags:
- *       - Posts
+ *     summary: Get paginated posts
+ *     tags: [Posts]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Number of posts per page
  *     responses:
- *       '200':
- *         description: A list of posts
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Post'
- *       '500':
- *         description: Internal server error
+ *       200:
+ *         description: Paginated list of posts
  */
-
-router.get('/', postsController.getAll.bind(postsController));
+router.get('/paginated', postsController.getPaginatedPosts.bind(postsController));
 
 /**
  * @swagger
- * /posts/{id}:
+ * /api/posts/user/{userId}:
  *   get:
- *     summary: Get a post by ID
- *     description: Retrieves a post by its ID
- *     tags:
- *       - Posts
+ *     summary: Get posts by user ID
+ *     tags: [Posts]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of user's posts
+ */
+router.get('/user/:userId', postsController.getByUserId.bind(postsController));
+
+/**
+ * @swagger
+ * /api/posts/{id}/comments:
+ *   get:
+ *     summary: Get comments for a post
+ *     tags: [Posts]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: The post ID
  *     responses:
- *       '200':
- *         description: A single post
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Post'
- *       '404':
+ *       200:
+ *         description: List of comments for the post
+ *       404:
  *         description: Post not found
- *       '500':
- *         description: Internal server error
  */
-router.get('/:id', (req, res) => {
-  postsController.getById(req, res);
-});
+router.get('/:id/comments', postsController.getComments.bind(postsController));
 
 /**
  * @swagger
- * /posts:
+ * /api/posts/search:
+ *   get:
+ *     summary: Search posts
+ *     tags: [Posts]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Search query
+ *     responses:
+ *       200:
+ *         description: List of matching posts
+ */
+router.get('/search', postsController.searchPosts.bind(postsController));
+
+/**
+ * @swagger
+ * /api/posts:
+ *   get:
+ *     summary: Get all posts
+ *     tags: [Posts]
+ *     responses:
+ *       200:
+ *         description: List of all posts
+ */
+router.get('/', postsController.getAll.bind(postsController));
+
+/**
+ * @swagger
+ * /api/posts:
  *   post:
  *     summary: Create a new post
- *     description: Creates a new post
- *     tags:
- *       - Posts
+ *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -103,31 +115,51 @@ router.get('/:id', (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Post'
+ *             type: object
+ *             required:
+ *               - title
+ *               - content
+ *             properties:
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               imageUrl:
+ *                 type: string
  *     responses:
- *       '201':
- *         description: The created post
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Post'
- *       '400':
- *         description: Invalid input
- *       '401':
+ *       201:
+ *         description: Post created successfully
+ *       401:
  *         description: Unauthorized
- *       '500':
- *         description: Internal server error
  */
 router.post('/', authMiddleware, postsController.create.bind(postsController));
 
 /**
  * @swagger
- * /posts/{id}:
- *   delete:
- *     summary: Delete a post by ID
- *     description: Deletes a post by its ID
- *     tags:
- *       - Posts
+ * /api/posts/{id}:
+ *   get:
+ *     summary: Get post by ID
+ *     tags: [Posts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Post details
+ *       404:
+ *         description: Post not found
+ */
+router.get('/:id', postsController.getById.bind(postsController));
+
+/**
+ * @swagger
+ * /api/posts/{id}:
+ *   put:
+ *     summary: Update a post
+ *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -136,103 +168,110 @@ router.post('/', authMiddleware, postsController.create.bind(postsController));
  *         required: true
  *         schema:
  *           type: string
- *         description: The post ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               imageUrl:
+ *                 type: string
  *     responses:
- *       '200':
- *         description: Post deleted successfully
- *       '401':
+ *       200:
+ *         description: Post updated successfully
+ *       401:
  *         description: Unauthorized
- *       '404':
+ *       404:
  *         description: Post not found
- *       '500':
- *         description: Internal server error
  */
-router.delete('/:id', authMiddleware, postsController.deleteItem.bind(postsController));
-
-router.post('/:postId/comments', authMiddleware, postsController.create.bind(postsController));
-
-// Like a post
-router.post('/:id/like', authMiddleware, postsController.toggleLike.bind(postsController));
-
-// Add comment to post
-router.post('/:id/comment', authMiddleware, postsController.addComment.bind(postsController));
-
-// Get comments for a post
-router.get('/:id/comments', postsController.getComments.bind(postsController));
-
-// // Get by user id
-router.get('/user/:id', postsController.getByUserId.bind(postsController));
+router.put('/:id', authMiddleware, postsController.update.bind(postsController));
 
 /**
  * @swagger
- * /posts/paginated:
- *   get:
- *     summary: Get paginated posts with filters
- *     description: Retrieves a paginated list of posts with optional filtering
- *     tags:
- *       - Posts
+ * /api/posts/{id}:
+ *   delete:
+ *     summary: Delete a post
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of items per page
- *       - in: query
- *         name: destination
+ *       - in: path
+ *         name: id
+ *         required: true
  *         schema:
  *           type: string
- *         description: Filter by destination (partial match)
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *           enum: [RELAXED, MODERATE, INTENSIVE]
- *         description: Filter by trip intensity
- *       - in: query
- *         name: minPrice
- *         schema:
- *           type: number
- *         description: Minimum price
- *       - in: query
- *         name: maxPrice
- *         schema:
- *           type: number
- *         description: Maximum price
  *     responses:
- *       '200':
- *         description: A paginated list of posts
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 posts:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Post'
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     total:
- *                       type: integer
- *                     page:
- *                       type: integer
- *                     limit:
- *                       type: integer
- *                     pages:
- *                       type: integer
- *                     hasMore:
- *                       type: boolean
- *       '500':
- *         description: Internal server error
+ *       200:
+ *         description: Post deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Post not found
  */
-router.get('/paginated', postsController.getPaginatedPosts.bind(postsController));
+router.delete('/:id', authMiddleware, postsController.deleteItem.bind(postsController));
+
+/**
+ * @swagger
+ * /api/posts/{id}/like:
+ *   post:
+ *     summary: Toggle like for a post
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Like toggled successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Post not found
+ */
+router.post('/:id/like', authMiddleware, postsController.toggleLike.bind(postsController));
+
+/**
+ * @swagger
+ * /api/posts/{id}/comment:
+ *   post:
+ *     summary: Add a comment to a post
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Comment added successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Post not found
+ */
+router.post('/:id/comment', authMiddleware, postsController.addComment.bind(postsController));
 
 export default router;

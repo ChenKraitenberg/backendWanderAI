@@ -8,6 +8,13 @@ import heicConvert from 'heic-convert';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Files
+ *   description: File upload and management
+ */
+
 //
 // Helper function for HEIC/HEIF detection
 //
@@ -60,9 +67,37 @@ const upload = multer({
   },
 });
 
-//
-// Updated /upload route with HEIC/HEIF conversion logic using heic-convert
-//
+/**
+ * @swagger
+ * /api/files/upload:
+ *   post:
+ *     summary: Upload an image file
+ *     tags: [Files]
+ *     consumes:
+ *       - multipart/form-data
+ *     parameters:
+ *       - in: formData
+ *         name: image
+ *         type: file
+ *         description: The image file to upload
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Image uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: No file uploaded
+ *       500:
+ *         description: Server error during upload
+ */
 router.post('/upload', upload.single('image'), async (req, res): Promise<void> => {
   try {
     const file = req.file;

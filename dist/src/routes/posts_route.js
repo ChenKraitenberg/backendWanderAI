@@ -1,152 +1,40 @@
 "use strict";
+// import express, { Request, Response } from 'express';
+// import postsController from '../controllers/posts_controller';
+// import { authMiddleware } from '../controllers/auth_controller';
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// const router = express.Router();
+// router.get('/', postsController.getAll.bind(postsController));
+// router.post('/:userId', authMiddleware, postsController.create.bind(postsController));
+// router.delete('/:id/:userId', authMiddleware, postsController.deleteItem.bind(postsController));
+// router.post('/:postId/comments', authMiddleware, postsController.create.bind(postsController));
+// router.post('/like/:id/:userId', authMiddleware, postsController.toggleLike.bind(postsController));
+// router.post('/comment/:id/:userId', authMiddleware, postsController.addComment.bind(postsController));
+// router.get('/comments/:id', postsController.getComments.bind(postsController));
+// router.get('/user/:userId', authMiddleware, postsController.getByUserId.bind(postsController));
+// router.get('/paginated', postsController.getPaginatedPosts.bind(postsController));
+// router.get('/:id', postsController.getById.bind(postsController));
+// export default router;
 const express_1 = __importDefault(require("express"));
-const router = express_1.default.Router();
 const posts_controller_1 = __importDefault(require("../controllers/posts_controller"));
 const auth_controller_1 = require("../controllers/auth_controller");
-/**
- * @swagger
- * tags:
- *   name: Posts
- *   description: The Posts managing API
- */
-/**
- * @swagger
- * components:
- *   schemas:
- *     Post:
- *       type: object
- *       required:
- *         - title
- *         - content
- *       properties:
- *         _id:
- *           type: string
- *           example: 60d0fe4f5311236168a109ca
- *         title:
- *           type: string
- *           example: My First Post
- *         content:
- *           type: string
- *           example: This is the content of the post.
- *         author:
- *           type: string
- *           example: 60d0fe4f5311236168a109ca
- */
-/**
- * @swagger
- * /posts:
- *   get:
- *     summary: Get all posts
- *     description: Retrieves a list of all posts
- *     tags:
- *       - Posts
- *     responses:
- *       '200':
- *         description: A list of posts
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Post'
- *       '500':
- *         description: Internal server error
- */
+const router = express_1.default.Router();
+// Specific routes first - these MUST come before the /:id route
+router.get('/paginated', posts_controller_1.default.getPaginatedPosts.bind(posts_controller_1.default));
+router.get('/user/:userId', posts_controller_1.default.getByUserId.bind(posts_controller_1.default));
+router.get('/:id/comments', posts_controller_1.default.getComments.bind(posts_controller_1.default));
+router.get('/search', posts_controller_1.default.searchPosts.bind(posts_controller_1.default));
+// Regular CRUD operations on main resource
 router.get('/', posts_controller_1.default.getAll.bind(posts_controller_1.default));
-/**
- * @swagger
- * /posts/{id}:
- *   get:
- *     summary: Get a post by ID
- *     description: Retrieves a post by its ID
- *     tags:
- *       - Posts
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The post ID
- *     responses:
- *       '200':
- *         description: A single post
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Post'
- *       '404':
- *         description: Post not found
- *       '500':
- *         description: Internal server error
- */
-router.get('/:id', (req, res) => {
-    posts_controller_1.default.getById(req, res);
-});
-/**
- * @swagger
- * /posts:
- *   post:
- *     summary: Create a new post
- *     description: Creates a new post
- *     tags:
- *       - Posts
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Post'
- *     responses:
- *       '201':
- *         description: The created post
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Post'
- *       '400':
- *         description: Invalid input
- *       '401':
- *         description: Unauthorized
- *       '500':
- *         description: Internal server error
- */
 router.post('/', auth_controller_1.authMiddleware, posts_controller_1.default.create.bind(posts_controller_1.default));
-/**
- * @swagger
- * /posts/{id}:
- *   delete:
- *     summary: Delete a post by ID
- *     description: Deletes a post by its ID
- *     tags:
- *       - Posts
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The post ID
- *     responses:
- *       '200':
- *         description: Post deleted successfully
- *       '401':
- *         description: Unauthorized
- *       '404':
- *         description: Post not found
- *       '500':
- *         description: Internal server error
- */
+router.get('/:id', posts_controller_1.default.getById.bind(posts_controller_1.default));
+router.put('/:id', auth_controller_1.authMiddleware, posts_controller_1.default.update.bind(posts_controller_1.default));
 router.delete('/:id', auth_controller_1.authMiddleware, posts_controller_1.default.deleteItem.bind(posts_controller_1.default));
-router.post('/:postId/comments', auth_controller_1.authMiddleware, posts_controller_1.default.create.bind(posts_controller_1.default));
-router.post('/:postId/like', auth_controller_1.authMiddleware, posts_controller_1.default.create.bind(posts_controller_1.default));
+// Actions on posts
+router.post('/:id/like', auth_controller_1.authMiddleware, posts_controller_1.default.toggleLike.bind(posts_controller_1.default));
+router.post('/:id/comment', auth_controller_1.authMiddleware, posts_controller_1.default.addComment.bind(posts_controller_1.default));
 exports.default = router;
 //# sourceMappingURL=posts_route.js.map

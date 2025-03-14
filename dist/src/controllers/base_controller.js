@@ -15,32 +15,47 @@ class BaseController {
     }
     getAll(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
-            const ownerFilter = req.query.owner;
             try {
-                if (ownerFilter) {
-                    const posts = yield this.model.find({ owner: ownerFilter });
-                    res.status(200).send(posts);
+                // Check for userId or owner filter in query parameters
+                const userId = req.query.userId;
+                const owner = req.query.owner;
+                // Log what we're filtering by
+                console.log('Filtering posts by:', { userId, owner });
+                if (userId) {
+                    // Filter by userId field
+                    const items = yield this.model.find({ userId: userId });
+                    console.log(`Found ${items.length} items with userId: ${userId}`);
+                    res.status(200).send(items);
+                }
+                else if (owner) {
+                    // Filter by owner field
+                    const items = yield this.model.find({ owner: owner });
+                    console.log(`Found ${items.length} items with owner: ${owner}`);
+                    res.status(200).send(items);
                 }
                 else {
-                    const posts = yield this.model.find();
-                    res.status(200).send(posts);
+                    // No filter, return all items
+                    const items = yield this.model.find();
+                    console.log(`Found ${items.length} items total`);
+                    res.status(200).send(items);
                 }
             }
             catch (error) {
+                console.error('Error in getAll:', error);
                 res.status(400).send(error);
             }
         });
     }
     getById(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
-            const postId = req.params.id;
+            const itemId = req.params.id;
             try {
-                const post = yield this.model.findById(postId);
-                if (post === null) {
-                    return res.status(404).send('not found');
+                const item = yield this.model.findById(itemId);
+                if (item === null) {
+                    res.status(404).send('not found');
                 }
                 else {
-                    return res.status(200).send(post);
+                    res.status(200).send(item);
                 }
             }
             catch (error) {
@@ -51,21 +66,25 @@ class BaseController {
     create(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             const item = req.body;
+            // Log what we're creating
+            console.log('Creating new item:', item);
             try {
                 const newItem = yield this.model.create(item);
+                console.log('Created item:', newItem);
                 res.status(201).send(newItem);
             }
             catch (error) {
+                console.error('Error creating item:', error);
                 res.status(400).send(error);
             }
         });
     }
     deleteItem(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
-            const itemnId = req.params.id;
-            console.log(`Deleting trip with ID: ${itemnId}`); // Log the request
+            const itemId = req.params.id;
+            console.log(`Deleting item with ID: ${itemId}`);
             try {
-                yield this.model.findByIdAndDelete(itemnId);
+                yield this.model.findByIdAndDelete(itemId);
                 res.status(200).send();
             }
             catch (error) {
