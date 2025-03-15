@@ -47,16 +47,15 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/posts', postsRoute);
-app.use('/comments', commentsRoute);
+app.use('/posts/:postId/comments', commentsRoute);
+
+// app.use('/comments', commentsRoute);
 app.use('/auth', authRoute);
 app.use('/wishlist', wishlistRoute);
 
 // Serve static files
 app.use('/uploads', express.static('public/uploads'));
 
-// נתיבי קבצים
-// הנתיב /file עבור קריאות POST לטעינת קבצים (למשל: POST http://localhost:3060/file/upload)
-// הנתיב /file-access עבור גישה לקבצים (למשל: GET http://localhost:3060/file-access/filename.jpg)
 app.use('/file', fileRoute);
 app.use('/file-access', fileAccessRoute);
 

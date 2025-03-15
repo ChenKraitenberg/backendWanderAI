@@ -14,7 +14,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/file-access/{filename}:
+ * /file-access/{filename}:
  *   get:
  *     summary: Access an uploaded file by filename
  *     tags: [File Access]
@@ -47,7 +47,9 @@ router.get('/:filename', (req: Request, res: Response) => {
     return;
   }
 
-  const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
+  //const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+
   const filePath = path.join(uploadsDir, filename);
 
   // Check if file exists

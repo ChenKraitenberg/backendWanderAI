@@ -48,10 +48,10 @@ const WishlistItemSchema = new Schema<IWishlistItem>({
     type: Date,
     default: Date.now,
   },
-  image: {
-    type: String,
-    required: false,
-  },
+  // image: {
+  //   type: String,
+  //   required: false,
+  // },
 });
 
 // Add index for better query performance

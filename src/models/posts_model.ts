@@ -55,7 +55,7 @@ const PostSchema = new Schema<IPost>({
   },
   bookedSeats: {
     type: Number,
-    required: true,
+    //required: true,
   },
   image: {
     type: String,

@@ -13,7 +13,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/posts/paginated:
+ * /posts/paginated:
  *   get:
  *     summary: Get paginated posts
  *     tags: [Posts]
@@ -36,7 +36,7 @@ router.get('/paginated', postsController.getPaginatedPosts.bind(postsController)
 
 /**
  * @swagger
- * /api/posts/user/{userId}:
+ * /posts/user/{userId}:
  *   get:
  *     summary: Get posts by user ID
  *     tags: [Posts]
@@ -54,7 +54,7 @@ router.get('/user/:userId', postsController.getByUserId.bind(postsController));
 
 /**
  * @swagger
- * /api/posts/{id}/comments:
+ * /posts/{id}/comments:
  *   get:
  *     summary: Get comments for a post
  *     tags: [Posts]
@@ -74,7 +74,7 @@ router.get('/:id/comments', postsController.getComments.bind(postsController));
 
 /**
  * @swagger
- * /api/posts/search:
+ * /posts/search:
  *   get:
  *     summary: Search posts
  *     tags: [Posts]
@@ -92,7 +92,7 @@ router.get('/search', postsController.searchPosts.bind(postsController));
 
 /**
  * @swagger
- * /api/posts:
+ * /posts:
  *   get:
  *     summary: Get all posts
  *     tags: [Posts]
@@ -104,7 +104,7 @@ router.get('/', postsController.getAll.bind(postsController));
 
 /**
  * @swagger
- * /api/posts:
+ * /posts:
  *   post:
  *     summary: Create a new post
  *     tags: [Posts]
@@ -117,15 +117,45 @@ router.get('/', postsController.getAll.bind(postsController));
  *           schema:
  *             type: object
  *             required:
- *               - title
- *               - content
+ *               - name
+ *               - description
+ *               - startDate
+ *               - endDate
+ *               - price
+ *               - maxSeats
+ *               - image
  *             properties:
- *               title:
+ *               name:
  *                 type: string
- *               content:
+ *                 description: The title of the post
+ *               description:
  *                 type: string
- *               imageUrl:
+ *                 description: Detailed description of the post
+ *               startDate:
  *                 type: string
+ *                 format: date-time
+ *                 description: Start date of the event
+ *               endDate:
+ *                 type: string
+ *                 format: date-time
+ *                 description: End date of the event
+ *               price:
+ *                 type: number
+ *                 description: Price of the event
+ *               maxSeats:
+ *                 type: number
+ *                 description: Maximum number of seats
+ *               image:
+ *                 type: string
+ *                 description: URL of the image
+ *             example:
+ *               name: "Trip to Eilat"
+ *               description: "A wonderful trip to Eilat with plenty of fun and sun."
+ *               startDate: "2025-03-15T13:30:42.610Z"
+ *               endDate: "2025-03-20T13:30:42.610Z"
+ *               price: 200
+ *               maxSeats: 50
+ *               image: "/uploads/1741209156558-eilat.png"
  *     responses:
  *       201:
  *         description: Post created successfully
@@ -136,7 +166,7 @@ router.post('/', authMiddleware, postsController.create.bind(postsController));
 
 /**
  * @swagger
- * /api/posts/{id}:
+ * /posts/{id}:
  *   get:
  *     summary: Get post by ID
  *     tags: [Posts]
@@ -152,13 +182,14 @@ router.post('/', authMiddleware, postsController.create.bind(postsController));
  *       404:
  *         description: Post not found
  */
+//router.get('/:id', postsController.getById.bind(postsController));
 router.get('/:id', postsController.getById.bind(postsController));
 
 /**
  * @swagger
- * /api/posts/{id}:
- *   put:
- *     summary: Update a post
+ * /posts/{id}:
+ *   patch:
+ *     summary: Update a post partially
  *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
@@ -168,6 +199,7 @@ router.get('/:id', postsController.getById.bind(postsController));
  *         required: true
  *         schema:
  *           type: string
+ *         description: The ID of the post
  *     requestBody:
  *       required: true
  *       content:
@@ -175,11 +207,21 @@ router.get('/:id', postsController.getById.bind(postsController));
  *           schema:
  *             type: object
  *             properties:
- *               title:
+ *               name:
  *                 type: string
- *               content:
+ *               description:
  *                 type: string
- *               imageUrl:
+ *               startDate:
+ *                 type: string
+ *                 format: date-time
+ *               endDate:
+ *                 type: string
+ *                 format: date-time
+ *               price:
+ *                 type: number
+ *               maxSeats:
+ *                 type: number
+ *               image:
  *                 type: string
  *     responses:
  *       200:
@@ -189,11 +231,11 @@ router.get('/:id', postsController.getById.bind(postsController));
  *       404:
  *         description: Post not found
  */
-router.put('/:id', authMiddleware, postsController.update.bind(postsController));
+router.patch('/:id', authMiddleware, postsController.update.bind(postsController));
 
 /**
  * @swagger
- * /api/posts/{id}:
+ * /posts/{id}:
  *   delete:
  *     summary: Delete a post
  *     tags: [Posts]
@@ -217,7 +259,7 @@ router.delete('/:id', authMiddleware, postsController.deleteItem.bind(postsContr
 
 /**
  * @swagger
- * /api/posts/{id}/like:
+ * /posts/{id}/like:
  *   post:
  *     summary: Toggle like for a post
  *     tags: [Posts]
@@ -241,7 +283,7 @@ router.post('/:id/like', authMiddleware, postsController.toggleLike.bind(postsCo
 
 /**
  * @swagger
- * /api/posts/{id}/comment:
+ * /posts/{id}/comment:
  *   post:
  *     summary: Add a comment to a post
  *     tags: [Posts]
@@ -260,13 +302,15 @@ router.post('/:id/like', authMiddleware, postsController.toggleLike.bind(postsCo
  *           schema:
  *             type: object
  *             required:
- *               - content
+ *               - text
  *             properties:
- *               content:
+ *               text:
  *                 type: string
  *     responses:
- *       201:
+ *       200:
  *         description: Comment added successfully
+ *       400:
+ *         description: Bad request (missing text)
  *       401:
  *         description: Unauthorized
  *       404:

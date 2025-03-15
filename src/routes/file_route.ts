@@ -69,35 +69,29 @@ const upload = multer({
 
 /**
  * @swagger
- * /api/files/upload:
+ * /file/upload:
  *   post:
  *     summary: Upload an image file
  *     tags: [Files]
- *     consumes:
- *       - multipart/form-data
- *     parameters:
- *       - in: formData
- *         name: image
- *         type: file
- *         description: The image file to upload
- *         required: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       200:
  *         description: Image uploaded successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 url:
- *                   type: string
- *                 message:
- *                   type: string
  *       400:
  *         description: No file uploaded
  *       500:
  *         description: Server error during upload
  */
+
 router.post('/upload', upload.single('image'), async (req, res): Promise<void> => {
   try {
     const file = req.file;

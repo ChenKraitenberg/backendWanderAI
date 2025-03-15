@@ -8,6 +8,20 @@ import axios from 'axios';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        _id: string;
+        email: string;
+        name?: string;
+        avatar?: string;
+      };
+    }
+  }
+}
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name, avatar } = req.body;
@@ -204,42 +218,74 @@ type Payload = {
   _id: string;
 };
 
+// In auth_controller.ts, ensure the authMiddleware function is properly handling the token
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const authorization = req.headers.authorization;
+
+  // Debugging info
+  console.log('Auth header received:', authorization);
+
   const token = authorization && authorization.split(' ')[1];
   if (!token) {
-    // Check if this is a wishlist route
-    if (req.path.startsWith('/wishlist')) {
-      res.status(401).json({ error: 'User ID not found in request' });
-      return;
-    } else {
-      // For auth routes, use the original format that auth tests expect
-      res.status(401).send('Access Denied');
-      return;
-    }
+    console.log('No token provided');
+    res.status(401).send('Access Denied');
+    return;
   }
+
   if (!process.env.TOKEN_SECRET) {
-    res.status(400).send('Server Error');
+    console.log('Server missing TOKEN_SECRET');
+    res.status(500).send('Server Error');
     return;
   }
 
   jwt.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
     if (err) {
-      console.error('JWT Error:', err);
-
-      // Again, differentiate between routes
-      if (req.path.startsWith('/wishlist')) {
-        res.status(401).json({ error: 'User ID not found in request' });
-      } else {
-        return res.status(401).send('Access Denied');
-      }
+      console.error('Token verification error:', err);
+      res.status(401).send('Access Denied');
+      return;
     }
+
     console.log('JWT Payload:', payload);
-    const userId = (payload as Payload)._id;
-    req.params.userId = userId;
+
+    // Set both user and userId params
+    req.user = payload as { _id: string; email: string; name?: string; avatar?: string };
+    req.params.userId = req.user._id;
+
     next();
   });
 };
+// export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+//   const authorization = req.headers.authorization;
+//   const token = authorization && authorization.split(' ')[1];
+//   if (!token) {
+//     if (req.path.startsWith('/wishlist')) {
+//       return res.status(401).json({ error: 'User ID not found in request' });
+//     } else {
+//       return res.status(401).send('Access Denied');
+//     }
+//   }
+//   if (!process.env.TOKEN_SECRET) {
+//     return res.status(500).send('Server Error');
+//   }
+
+//   jwt.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
+//     if (err) {
+//       console.error('JWT Error:', err);
+//       if (req.path.startsWith('/wishlist')) {
+//         return res.status(401).json({ error: 'User ID not found in request' });
+//       } else {
+//         return res.status(401).send('Access Denied');
+//       }
+//     }
+//     console.log('JWT Payload:', payload);
+//     // שמור את המידע של המשתמש ב-req.user
+//     req.user = payload as { _id: string; email: string; name?: string; avatar?: string };
+//     // אם יש צורך בפרמטר userId, ניתן לשים אותו גם ב-req.params
+//     req.params.userId = req.user._id;
+//     next();
+//   });
+// };
+
 const socialLogin = async (req: Request, res: Response) => {
   try {
     const { provider, token, email, name, avatar } = req.body;

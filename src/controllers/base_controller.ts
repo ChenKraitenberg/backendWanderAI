@@ -40,6 +40,7 @@ class BaseController<T> {
   }
 
   async getById(req: Request, res: Response) {
+    // changed to geyByUserId
     const itemId = req.params.id;
     try {
       const item = await this.model.findById(itemId);

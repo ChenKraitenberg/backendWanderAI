@@ -15,7 +15,7 @@ router.use(authMiddleware);
 
 /**
  * @swagger
- * /api/wishlist:
+ * /wishlist:
  *   get:
  *     summary: Get all wishlist items for the authenticated user
  *     tags: [Wishlist]
@@ -31,7 +31,7 @@ router.get('/', wishlistController.getAll.bind(wishlistController));
 
 /**
  * @swagger
- * /api/wishlist:
+ * /wishlist:
  *   post:
  *     summary: Add an item to wishlist
  *     tags: [Wishlist]
@@ -44,21 +44,58 @@ router.get('/', wishlistController.getAll.bind(wishlistController));
  *           schema:
  *             type: object
  *             required:
- *               - itemId
+ *               - title
+ *               - description
+ *               - destination
+ *               - duration
+ *               - category
  *             properties:
- *               itemId:
+ *               title:
  *                 type: string
+ *                 description: The title of the wishlist item.
+ *               description:
+ *                 type: string
+ *                 description: A detailed description of the wishlist item.
+ *               destination:
+ *                 type: string
+ *                 description: The destination associated with the wishlist item.
+ *               duration:
+ *                 type: string
+ *                 description: The duration of the trip (e.g., "7 days").
+ *               category:
+ *                 type: string
+ *                 enum: [RELAXED, MODERATE, INTENSIVE]
+ *                 description: The category of the trip.
+ *               itinerary:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Optional itinerary items.
+ *             example:
+ *               title: "Trip to Paris"
+ *               description: "A wonderful trip to Paris with friends."
+ *               destination: "Paris"
+ *               duration: "7 days"
+ *               category: "MODERATE"
+ *               itinerary: ["Visit Eiffel Tower", "Cruise on the Seine"]
  *     responses:
  *       201:
- *         description: Item added to wishlist
+ *         description: Item added to wishlist successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WishlistItem'
  *       401:
  *         description: Unauthorized
+ *       400:
+ *         description: Missing required field(s)
  */
+
 router.post('/', wishlistController.create.bind(wishlistController));
 
 /**
  * @swagger
- * /api/wishlist/{id}:
+ * /wishlist/{id}:
  *   delete:
  *     summary: Remove an item from wishlist
  *     tags: [Wishlist]
