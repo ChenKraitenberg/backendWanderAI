@@ -254,37 +254,6 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     next();
   });
 };
-// export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-//   const authorization = req.headers.authorization;
-//   const token = authorization && authorization.split(' ')[1];
-//   if (!token) {
-//     if (req.path.startsWith('/wishlist')) {
-//       return res.status(401).json({ error: 'User ID not found in request' });
-//     } else {
-//       return res.status(401).send('Access Denied');
-//     }
-//   }
-//   if (!process.env.TOKEN_SECRET) {
-//     return res.status(500).send('Server Error');
-//   }
-
-//   jwt.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
-//     if (err) {
-//       console.error('JWT Error:', err);
-//       if (req.path.startsWith('/wishlist')) {
-//         return res.status(401).json({ error: 'User ID not found in request' });
-//       } else {
-//         return res.status(401).send('Access Denied');
-//       }
-//     }
-//     console.log('JWT Payload:', payload);
-//     // שמור את המידע של המשתמש ב-req.user
-//     req.user = payload as { _id: string; email: string; name?: string; avatar?: string };
-//     // אם יש צורך בפרמטר userId, ניתן לשים אותו גם ב-req.params
-//     req.params.userId = req.user._id;
-//     next();
-//   });
-// };
 
 const socialLogin = async (req: Request, res: Response) => {
   try {

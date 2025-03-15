@@ -64,53 +64,6 @@ class PostController extends BaseController<IPost> {
     }
   }
 
-  // Modified to preserve the post owner and user info on update
-  // async update(req: Request, res: Response): Promise<void> {
-  //   try {
-  //     const userId = req.params.userId;
-  //     const postId = req.params.id;
-
-  //     // Validate date range for update
-  //     if (req.body.startDate && req.body.endDate) {
-  //       const startDate = new Date(req.body.startDate);
-  //       const endDate = new Date(req.body.endDate);
-  //       if (endDate < startDate) {
-  //         res.status(400).json({ error: 'End date must be after start date' });
-  //         return;
-  //       }
-  //     }
-
-  //     // Get the existing post to preserve user info
-  //     const existingPost = await this.model.findById(postId);
-  //     if (!existingPost) {
-  //       res.status(404).json({ error: 'Post not found' });
-  //       return;
-  //     }
-
-  //     // Ensure only the post owner can update it
-  //     if (existingPost.userId.toString() !== userId) {
-  //       res.status(403).json({ error: 'Not authorized to update this post' });
-  //       return;
-  //     }
-
-  //     // Check if the request includes updated user info
-  //     const userInfo = req.body.user || existingPost.user;
-
-  //     // Preserve user info in the update
-  //     const post = {
-  //       ...req.body,
-  //       owner: userId,
-  //       userId: userId,
-  //       user: userInfo, // Use updated user info if provided, otherwise keep original
-  //     };
-
-  //     req.body = post;
-  //     super.update(req, res);
-  //   } catch (error) {
-  //     console.error('Error updating post:', error);
-  //     res.status(500).json({ error: 'Failed to update post' });
-  //   }
-  // }
   async update(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.params.userId;
@@ -549,58 +502,6 @@ class PostController extends BaseController<IPost> {
       res.status(500).json({ error: 'Failed to create comment' });
     }
   }
-
-  // async addComment(req: AuthRequest, res: Response): Promise<void> {
-  //   try {
-  //     const { postId } = req.params;
-  //     const { text } = req.body;
-
-  //     if (!text) {
-  //       res.status(400).json({ error: 'Comment text is required' });
-  //     }
-
-  //     if (!mongoose.Types.ObjectId.isValid(postId)) {
-  //       res.status(400).json({ error: 'Invalid post ID format' });
-  //     }
-
-  //     const post = await postModel.findById(postId);
-  //     if (!post) {
-  //       res.status(404).json({ error: 'Post not found' });
-  //       return;
-  //     }
-
-  //     // שימוש ב-req.user
-  //     const user = req.user;
-  //     console.log('User from req.user:', user);
-  //     if (!user || !user._id || !user.email) {
-  //       res.status(401).json({ error: 'User not authenticated or incomplete user info' });
-  //       return;
-  //     }
-
-  //     const commentData = {
-  //       text,
-  //       postId,
-  //       createdAt: new Date(),
-  //       user: {
-  //         _id: user._id.toString(),
-  //         email: user.email,
-  //         name: user.name || 'Anonymous',
-  //         avatar: user.avatar,
-  //       },
-  //     };
-
-  //     console.log('Comment data to be added:', commentData);
-
-  //     post.comments.push(commentData as any);
-  //     await post.save();
-
-  //     const newComment = post.comments[post.comments.length - 1];
-  //     res.status(201).json(newComment);
-  //   } catch (error: any) {
-  //     console.error('Error creating comment:', error.message, error);
-  //     res.status(500).json({ error: 'Failed to create comment' });
-  //   }
-  // }
 
   // Get comments for a post
   async getComments(req: Request, res: Response) {
