@@ -1,8 +1,10 @@
 import express from 'express';
 import postsController from '../controllers/posts_controller';
 import { authMiddleware } from '../controllers/auth_controller';
+import multer from 'multer';
 
 const router = express.Router();
+const upload = multer({ dest: 'uploads/' });
 
 /**
  * @swagger
@@ -189,7 +191,7 @@ router.get('/:id', postsController.getById.bind(postsController));
  * @swagger
  * /posts/{id}:
  *   patch:
- *     summary: Update a post partially
+ *     summary: Update a post partially - any field can be updated including the image
  *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
@@ -203,26 +205,34 @@ router.get('/:id', postsController.getById.bind(postsController));
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
  *               name:
  *                 type: string
+ *                 description: New name for the post (optional)
  *               description:
  *                 type: string
+ *                 description: New description for the post (optional)
  *               startDate:
  *                 type: string
  *                 format: date-time
+ *                 description: New start date (optional)
  *               endDate:
  *                 type: string
  *                 format: date-time
+ *                 description: New end date (optional)
  *               price:
  *                 type: number
+ *                 description: New price (optional)
  *               maxSeats:
  *                 type: number
+ *                 description: New maximum seats (optional)
  *               image:
  *                 type: string
+ *                 format: binary
+ *                 description: New image file to upload (optional)
  *     responses:
  *       200:
  *         description: Post updated successfully
@@ -231,7 +241,8 @@ router.get('/:id', postsController.getById.bind(postsController));
  *       404:
  *         description: Post not found
  */
-router.patch('/:id', authMiddleware, postsController.update.bind(postsController));
+//router.patch('/:id', authMiddleware, postsController.update.bind(postsController));
+router.patch('/:id', authMiddleware, upload.single('image'), postsController.update.bind(postsController));
 
 /**
  * @swagger

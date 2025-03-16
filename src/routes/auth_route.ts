@@ -35,11 +35,29 @@ const router = express.Router();
  *                 type: string
  *               name:
  *                 type: string
+ *           example:
+ *             email: "user@example.com"
+ *             password: "securePassword123"
+ *             name: "John Doe"
+ *             avatar: "/uploads/default-avatar.png"
  *     responses:
  *       201:
  *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               user:
+ *                 _id: "67d4348796c4496fa09177fd"
+ *                 email: "user@example.com"
+ *                 name: "John Doe"
+ *                 avatar: "/uploads/default-avatar.png"
  *       400:
  *         description: Invalid input or user already exists
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "User already exists"
  */
 router.post('/register', authController.register);
 
@@ -63,39 +81,98 @@ router.post('/register', authController.register);
  *                 type: string
  *               password:
  *                 type: string
+ *           example:
+ *             email: "user@example.com"
+ *             password: "securePassword123"
  *     responses:
  *       200:
  *         description: Login successful
+ *         content:
+ *           application/json:
+ *             example:
+ *               accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               _id: "67d4348796c4496fa09177fd"
+ *               user:
+ *                 _id: "67d4348796c4496fa09177fd"
+ *                 email: "user@example.com"
+ *                 name: "John Doe"
+ *                 avatar: "/uploads/default-avatar.png"
  *       401:
  *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Wrong email or password"
  */
 router.post('/login', authController.login);
-
-/**
- * @swagger
- * /auth/logout:
- *   post:
- *     summary: Logout user
- *     tags: [Authentication]
- *     responses:
- *       200:
- *         description: Logout successful
- */
-router.post('/logout', authController.logout);
 
 /**
  * @swagger
  * /auth/refresh:
  *   post:
  *     summary: Refresh access token
+ *     description: >
+ *       Provides a new access token using a valid refresh token.
+ *       Note that refresh tokens are invalidated after logout,
+ *       so a new login will be required if you've logged out.
  *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: A valid refresh token obtained during login or a previous refresh
+ *           example:
+ *             refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *     responses:
  *       200:
  *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *       401:
- *         description: Invalid refresh token
+ *         description: Invalid refresh token (expired, already used, or invalidated by logout)
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Access Denied"
  */
 router.post('/refresh', authController.refresh);
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout user
+ *     description: Requires a valid refresh token. If you no longer have a valid refresh token, you may need to clear local storage and navigate to login.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *       400:
+ *         description: Access Denied - Invalid or missing refresh token
+ */
+router.post('/logout', authController.logout);
 
 /**
  * @swagger
@@ -108,8 +185,19 @@ router.post('/refresh', authController.refresh);
  *     responses:
  *       200:
  *         description: User information retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               _id: "67d4348796c4496fa09177fd"
+ *               email: "user@example.com"
+ *               name: "John Doe"
+ *               avatar: "/uploads/default-avatar.png"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Access Denied"
  */
 router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -159,11 +247,24 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
  *                 type: string
  *               avatar:
  *                 type: string
+ *           example:
+ *             name: "John Smith"
+ *             avatar: "/uploads/new-avatar.jpg"
  *     responses:
  *       200:
  *         description: User information updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               _id: "67d4348796c4496fa09177fd"
+ *               email: "user@example.com"
+ *               avatar: "/uploads/new-avatar.jpg"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Access Denied"
  */
 router.put('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -203,11 +304,38 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
  *                 enum: [google, facebook]
  *               token:
  *                 type: string
+ *               email:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               avatar:
+ *                 type: string
+ *           example:
+ *             provider: "google"
+ *             token: "google_oauth_token_here"
+ *             email: "user@gmail.com"
+ *             name: "Google User"
+ *             avatar: "https://lh3.googleusercontent.com/profile_image"
  *     responses:
  *       200:
  *         description: Social login successful
+ *         content:
+ *           application/json:
+ *             example:
+ *               accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               _id: "67d4348796c4496fa09177fd"
+ *               user:
+ *                 _id: "67d4348796c4496fa09177fd"
+ *                 email: "user@gmail.com"
+ *                 name: "Google User"
+ *                 avatar: "https://lh3.googleusercontent.com/profile_image"
  *       401:
  *         description: Invalid social token
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Invalid token"
  */
 router.post('/social-login', authController.socialLogin);
 
@@ -228,11 +356,21 @@ router.post('/social-login', authController.socialLogin);
  *             properties:
  *               email:
  *                 type: string
+ *           example:
+ *             email: "user@example.com"
  *     responses:
  *       200:
  *         description: Password reset email sent
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Password reset email sent"
  *       404:
  *         description: Email not found
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "User not found"
  */
 router.post('/request-reset', authController.requestPasswordReset);
 
@@ -248,11 +386,20 @@ router.post('/request-reset', authController.requestPasswordReset);
  *         required: true
  *         schema:
  *           type: string
+ *         example: "a1b2c3d4e5f6g7h8i9j0"
  *     responses:
  *       200:
  *         description: Token is valid
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Token is valid"
  *       400:
  *         description: Invalid or expired token
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Invalid or expired token"
  */
 router.get('/validate-reset-token/:token', authController.validateResetToken);
 
@@ -270,17 +417,28 @@ router.get('/validate-reset-token/:token', authController.validateResetToken);
  *             type: object
  *             required:
  *               - token
- *               - password
+ *               - newPassword
  *             properties:
  *               token:
  *                 type: string
- *               password:
+ *               newPassword:
  *                 type: string
+ *           example:
+ *             token: "a1b2c3d4e5f6g7h8i9j0"
+ *             newPassword: "newSecurePassword123"
  *     responses:
  *       200:
- *         description: Password reset successful
+ *         description: Password has been reset successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Password has been reset successfully"
  *       400:
  *         description: Invalid token or password
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Invalid or expired token"
  */
 router.post('/reset-password', authController.resetPassword);
 
@@ -301,12 +459,17 @@ router.post('/reset-password', authController.resetPassword);
  *             properties:
  *               email:
  *                 type: string
+ *           example:
+ *             email: "user@example.com"
  *     responses:
  *       200:
  *         description: User exists status
+ *         content:
+ *           application/json:
+ *             example:
+ *               exists: true
+ *               userId: "67d4348796c4496fa09177fd"
  */
 router.post('/check-user', authController.checkUserExists);
-
-// Removing duplicate route
 
 export default router;

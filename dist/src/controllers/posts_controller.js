@@ -1,11 +1,4 @@
 "use strict";
-// // src/controllers/posts_controller.ts
-// import postModel, { IPost } from '../models/posts_model';
-// import userModel from '../models/user_model';
-// import { Request, Response } from 'express';
-// import BaseController from './base_controller';
-// import mongoose from 'mongoose';
-// import { IComment } from '../models/comments_model';
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -19,421 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// interface AuthRequest extends Request {
-//   user?: { _id: string };
-// }
-// class PostController extends BaseController<IPost> {
-//   constructor() {
-//     super(postModel);
-//   }
-//   async create(req: Request, res: Response): Promise<void> {
-//     try {
-//       const userId = req.params.userId;
-//       const startDate = new Date(req.body.startDate);
-//       const endDate = new Date(req.body.endDate);
-//       if (endDate < startDate) {
-//         res.status(400).json({ error: 'End date must be after start date' });
-//         return;
-//       }
-//       // If user info is not provided in the request, fetch it
-//       if (!req.body.user || !req.body.user.name) {
-//         const user = await userModel.findById(userId);
-//         if (!user) {
-//           res.status(404).json({ error: 'User not found' });
-//           return;
-//         }
-//         // Add user info to the post
-//         req.body.user = {
-//           _id: userId,
-//           email: user.email,
-//           name: user.name || 'Anonymous', // Use name or fallback to Anonymous
-//           avatar: user.avatar,
-//         };
-//       }
-//       // Ensure owner and userId fields are set
-//       const post = {
-//         ...req.body,
-//         owner: userId,
-//         userId: userId,
-//       };
-//       req.body = post;
-//       super.create(req, res);
-//     } catch (error) {
-//       console.error('Error creating post:', error);
-//       res.status(500).json({ error: 'Failed to create post' });
-//     }
-//   }
-//   // Modified to preserve the post owner and user info on update
-//   async update(req: Request, res: Response): Promise<void> {
-//     try {
-//       const userId = req.params.userId;
-//       const postId = req.params.id;
-//       // Get the existing post to preserve user info
-//       const existingPost = await this.model.findById(postId);
-//       if (!existingPost) {
-//         res.status(404).json({ error: 'Post not found' });
-//         return;
-//       }
-//       // Ensure only the post owner can update it
-//       if (existingPost.userId.toString() !== userId) {
-//         res.status(403).json({ error: 'Not authorized to update this post' });
-//         return;
-//       }
-//       // Check if the request includes updated user info
-//       const userInfo = req.body.user || existingPost.user;
-//       // Preserve user info in the update
-//       const post = {
-//         ...req.body,
-//         owner: userId,
-//         userId: userId,
-//         user: userInfo, // Use updated user info if provided, otherwise keep original
-//       };
-//       req.body = post;
-//       super.update(req, res);
-//     } catch (error) {
-//       console.error('Error updating post:', error);
-//       res.status(500).json({ error: 'Failed to update post' });
-//     }
-//   }
-//   // Override getAll to populate user info if not already present
-//   async getAll(req: Request, res: Response): Promise<void> {
-//     try {
-//       // Check for various user-related query parameters
-//       const userId = req.query.userId as string;
-//       const owner = req.query.owner as string;
-//       const userEmail = req.query.email as string;
-//       console.log('Post query parameters:', { userId, owner, userEmail });
-//       let query = {};
-//       let posts = [];
-//       // Build query based on provided parameters
-//       if (userId) {
-//         query = {
-//           $or: [{ userId: userId }, { 'user._id': userId }, { owner: userId }],
-//         };
-//       } else if (owner) {
-//         query = {
-//           $or: [{ owner: owner }, { userId: owner }, { 'user._id': owner }],
-//         };
-//       } else if (userEmail) {
-//         // Case-insensitive email search
-//         query = {
-//           'user.email': { $regex: new RegExp('^' + userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') },
-//         };
-//       }
-//       // Log the final query for debugging
-//       console.log('MongoDB query:', JSON.stringify(query));
-//       // Execute the query
-//       if (Object.keys(query).length > 0) {
-//         posts = await this.model.find(query);
-//         console.log(`Found ${posts.length} posts matching query`);
-//       } else {
-//         // No specific user filter, get all posts
-//         posts = await this.model.find();
-//         console.log(`Returning all ${posts.length} posts`);
-//       }
-//       // Add a new endpoint for user-specific posts
-//       if (req.path.startsWith('/user/') && req.params.userId) {
-//         const userIdFromPath = req.params.userId;
-//         console.log(`Getting posts specifically for user ID: ${userIdFromPath}`);
-//         // Comprehensive query to find all posts by this user
-//         const userPosts = await this.model.find({
-//           $or: [{ userId: userIdFromPath }, { owner: userIdFromPath }, { 'user._id': userIdFromPath }],
-//         });
-//         console.log(`Found ${userPosts.length} posts for user ${userIdFromPath}`);
-//         res.status(200).json(userPosts);
-//         return;
-//       }
-//       // For any posts missing user info, try to fetch it
-//       for (const post of posts) {
-//         if (!post.user || !post.user.name) {
-//           try {
-//             const user = await userModel.findById(post.userId);
-//             if (user) {
-//               post.user = {
-//                 _id: user._id.toString(),
-//                 email: user.email,
-//                 name: user.name || 'Anonymous',
-//                 avatar: user.avatar,
-//               };
-//               await post.save();
-//             }
-//           } catch (err) {
-//             console.error(`Failed to fetch user info for post ${post._id}:`, err);
-//           }
-//         }
-//       }
-//       res.status(200).json(posts);
-//     } catch (error) {
-//       console.error('Error in getAll:', error);
-//       res.status(500).json({ error: 'Failed to fetch posts' });
-//     }
-//   }
-//   // Get posts with pagination and filtering
-//   async getPaginatedPosts(req: Request, res: Response) {
-//     try {
-//       // Parse pagination parameters
-//       const page = parseInt(req.query.page as string) || 1;
-//       const limit = parseInt(req.query.limit as string) || 10;
-//       const skip = (page - 1) * limit;
-//       // Build filter object
-//       const filter: any = {};
-//       // Add category filter if provided
-//       if (req.query.category) {
-//         filter.category = req.query.category;
-//       }
-//       // Add destination filter if provided
-//       if (req.query.destination) {
-//         // Use regex for partial match, case insensitive
-//         filter.destination = { $regex: req.query.destination, $options: 'i' };
-//       }
-//       // Add price range filter if provided
-//       if (req.query.minPrice || req.query.maxPrice) {
-//         filter.price = {};
-//         if (req.query.minPrice) {
-//           filter.price.$gte = parseInt(req.query.minPrice as string);
-//         }
-//         if (req.query.maxPrice) {
-//           filter.price.$lte = parseInt(req.query.maxPrice as string);
-//         }
-//       }
-//       console.log('Applying filter:', JSON.stringify(filter));
-//       try {
-//         // Execute the query with pagination
-//         const posts = await this.model
-//           .find(filter)
-//           .sort({ createdAt: -1 }) // Sort by newest first
-//           .skip(skip)
-//           .limit(limit);
-//         console.log(`Found ${posts.length} posts matching filter`);
-//         // For any posts missing user info, try to fetch it
-//         for (const post of posts) {
-//           if (!post.user || !post.user.name) {
-//             try {
-//               const user = await userModel.findById(post.userId);
-//               if (user) {
-//                 post.user = {
-//                   _id: user._id.toString(),
-//                   email: user.email,
-//                   name: user.name || 'Anonymous',
-//                   avatar: user.avatar,
-//                 };
-//                 await post.save();
-//               }
-//             } catch (err) {
-//               console.error(`Failed to fetch user info for post ${post._id}:`, err);
-//             }
-//           }
-//         }
-//         // Get total count for pagination metadata
-//         const total = await this.model.countDocuments(filter);
-//         // Return paginated response
-//         res.status(200).json({
-//           posts,
-//           pagination: {
-//             total,
-//             page,
-//             limit,
-//             pages: Math.ceil(total / limit),
-//             hasMore: page < Math.ceil(total / limit),
-//           },
-//         });
-//       } catch (queryError) {
-//         console.error('Error executing paginated query:', queryError);
-//         // Fallback to simple query without pagination
-//         const allPosts = await this.model.find(filter).sort({ createdAt: -1 });
-//         // Return as paginated response format
-//         res.status(200).json({
-//           posts: allPosts,
-//           pagination: {
-//             total: allPosts.length,
-//             page: 1,
-//             limit: allPosts.length,
-//             pages: 1,
-//             hasMore: false,
-//           },
-//         });
-//       }
-//     } catch (error) {
-//       console.error('Error fetching paginated posts:', error);
-//       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-//       res.status(500).json({ error: errorMessage });
-//     }
-//   }
-//   async toggleLike(req: Request, res: Response): Promise<void> {
-//     try {
-//       const postId = req.params.id;
-//       const userId = (req as AuthRequest).user?._id || req.params.userId;
-//       console.log(`Toggle like for post ${postId} by user ${userId}`);
-//       if (!postId || !userId) {
-//         console.error('Missing post ID or user ID');
-//         res.status(400).json({ error: 'Missing post ID or user ID' });
-//         return;
-//       }
-//       // Validate that both IDs are valid
-//       if (!mongoose.Types.ObjectId.isValid(postId) || !mongoose.Types.ObjectId.isValid(userId)) {
-//         console.error('Invalid post ID or user ID format');
-//         res.status(400).json({ error: 'Invalid ID format' });
-//         return;
-//       }
-//       const post = await this.model.findById(postId);
-//       if (!post) {
-//         console.error(`Post not found: ${postId}`);
-//         res.status(404).json({ error: 'Post not found' });
-//         return;
-//       }
-//       // Initialize likes array if it doesn't exist
-//       if (!Array.isArray(post.likes)) {
-//         post.likes = [];
-//       }
-//       // Log the current likes array for debugging
-//       console.log(`Current likes for post ${postId}:`, post.likes);
-//       // Check if user has already liked this post
-//       const isLiked = post.likes.some((id) => id.toString() === userId.toString());
-//       console.log(`User ${userId} has liked this post: ${isLiked}`);
-//       let message = '';
-//       if (isLiked) {
-//         // Remove like - make sure we compare strings for equality
-//         console.log(`Removing like from post ${postId} for user ${userId}`);
-//         post.likes = post.likes.filter((id) => id.toString() !== userId.toString());
-//         message = 'Like removed';
-//       } else {
-//         // Add like
-//         console.log(`Adding like to post ${postId} for user ${userId}`);
-//         post.likes.push(userId);
-//         message = 'Like added';
-//       }
-//       // Log the updated likes array
-//       console.log(`Updated likes for post ${postId}:`, post.likes);
-//       // Save to database
-//       await post.save();
-//       console.log(`${message} for post ${postId}. New likes count: ${post.likes.length}`);
-//       // Return updated post with the likes array
-//       res.status(200).json({
-//         _id: post._id,
-//         likes: post.likes,
-//         likesCount: post.likes.length,
-//         isLiked: post.likes.some((id) => id.toString() === userId.toString()),
-//         message,
-//       });
-//     } catch (error) {
-//       console.error('Error toggling like:', error);
-//       res.status(500).json({ error: 'Failed to toggle like' });
-//     }
-//   }
-//   // Add comment to post
-//   async addComment(req: AuthRequest, res: Response) {
-//     try {
-//       const postId = req.params.id;
-//       const userId = req.user?._id || req.params.userId;
-//       const { text } = req.body;
-//       if (!text) {
-//         res.status(400).json({ error: 'Comment text is required' });
-//         return;
-//       }
-//       const post = await this.model.findById(postId);
-//       if (!post) {
-//         res.status(404).send('Post not found');
-//         return;
-//       }
-//       // Get user info for the comment
-//       const user = await userModel.findById(userId);
-//       if (!user) {
-//         res.status(404).json({ error: 'User not found' });
-//         return;
-//       }
-//       // Add comment with user details
-//       const commentData = {
-//         user: {
-//           _id: user._id.toString(),
-//           email: user.email,
-//           name: user.name || 'Anonymous',
-//           avatar: user.avatar,
-//         },
-//         text,
-//         createdAt: new Date(),
-//         postId,
-//       };
-//       // Create a new comment subdocument by using the create method on the subdocument array
-//       post.comments.push(commentData as any);
-//       await post.save();
-//       // Return the new comment with populated user info
-//       const newComment = post.comments[post.comments.length - 1];
-//       res.status(200).json(newComment);
-//     } catch (error) {
-//       console.error('Error adding comment:', error);
-//       res.status(500).json({ error: 'Failed to add comment' });
-//     }
-//   }
-//   // Get comments for a post
-//   async getComments(req: Request, res: Response) {
-//     try {
-//       const postId = req.params.id;
-//       const post = await this.model.findById(postId);
-//       if (!post) {
-//         res.status(404).send('Post not found');
-//         return;
-//       }
-//       res.status(200).json(post.comments);
-//     } catch (error) {
-//       console.error('Error getting comments:', error);
-//       res.status(500).json({ error: 'Failed to get comments' });
-//     }
-//   }
-//   async getByUserId(req: Request, res: Response) {
-//     try {
-//       const userId = req.params.userId || req.query.userId;
-//       console.log(`Getting posts for user ID: ${userId}`);
-//       // The query should check both userId and owner fields
-//       const posts = await this.model.find({
-//         $or: [{ userId: userId }, { owner: userId }],
-//       });
-//       console.log(`Found ${posts.length} posts for user ${userId}`);
-//       res.status(200).send(posts);
-//     } catch (error) {
-//       console.error('Error getting posts by user ID:', error);
-//       res.status(400).send(error);
-//     }
-//   }
-//   async deleteItem(req: AuthRequest, res: Response): Promise<void> {
-//     try {
-//       const postId = req.params.id;
-//       const userId = req.user?._id || req.params.userId;
-//       // Find the post first
-//       const post = await this.model.findById(postId);
-//       if (!post) {
-//         res.status(404).json({ error: 'Post not found' });
-//         return;
-//       }
-//       // Check if the user is the post owner
-//       if (post.userId.toString() !== userId.toString()) {
-//         res.status(403).json({ error: 'Not authorized to delete this post' });
-//         return;
-//       }
-//       // If authorized, proceed with deletion
-//       await this.model.findByIdAndDelete(postId);
-//       res.status(200).json({ message: 'Post deleted successfully' });
-//     } catch (error) {
-//       console.error('Error deleting post:', error);
-//       res.status(500).json({ error: 'Failed to delete post' });
-//     }
-//   }
-//   // Validate date range for posts
-//   validateDateRange(req: Request, res: Response): boolean {
-//     const startDate = new Date(req.body.startDate);
-//     const endDate = new Date(req.body.endDate);
-//     if (endDate < startDate) {
-//       res.status(400).json({ error: 'End date must be after start date' });
-//       return false;
-//     }
-//     return true;
-//   }
-// }
-// export default new PostController();
-// src/controllers/posts_controller.ts
 const posts_model_1 = __importDefault(require("../models/posts_model"));
 const user_model_1 = __importDefault(require("../models/user_model"));
 const base_controller_1 = __importDefault(require("./base_controller"));
 const mongoose_1 = __importDefault(require("mongoose"));
+const path_1 = __importDefault(require("path"));
+const promises_1 = __importDefault(require("fs/promises"));
+const sharp_1 = __importDefault(require("sharp"));
 class PostController extends base_controller_1.default {
     constructor() {
         super(posts_model_1.default);
@@ -480,16 +65,57 @@ class PostController extends base_controller_1.default {
             }
         });
     }
-    // Modified to preserve the post owner and user info on update
+    // async update(req: Request, res: Response): Promise<void> {
+    //   try {
+    //     const userId = req.params.userId;
+    //     const postId = req.params.id;
+    //     // Validate date range for update if provided
+    //     if (req.body.startDate && req.body.endDate) {
+    //       const startDate = new Date(req.body.startDate);
+    //       const endDate = new Date(req.body.endDate);
+    //       if (endDate < startDate) {
+    //         res.status(400).json({ error: 'End date must be after start date' });
+    //         return;
+    //       }
+    //     }
+    //     // Get the existing post to preserve user info and missing fields
+    //     const existingPost = await this.model.findById(postId);
+    //     if (!existingPost) {
+    //       res.status(404).json({ error: 'Post not found' });
+    //       return;
+    //     }
+    //     // Ensure only the post owner can update it
+    //     if (existingPost.userId.toString() !== userId) {
+    //       res.status(403).json({ error: 'Not authorized to update this post' });
+    //       return;
+    //     }
+    //     // Check if the request includes updated user info; if not, use the existing user info
+    //     const userInfo = req.body.user || existingPost.user;
+    //     // Merge existing post data with the new data from req.body
+    //     const updatedData = {
+    //       ...existingPost.toObject(),
+    //       ...req.body,
+    //       owner: userId,
+    //       userId: userId,
+    //       user: userInfo,
+    //     };
+    //     req.body = updatedData;
+    //     super.update(req, res);
+    //   } catch (error) {
+    //     console.error('Error updating post:', error);
+    //     res.status(500).json({ error: 'Failed to update post' });
+    //   }
+    // }
     update(req, res) {
-        const _super = Object.create(null, {
-            update: { get: () => super.update }
-        });
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const userId = req.params.userId;
                 const postId = req.params.id;
-                // Validate date range for update
+                console.log('Update request received:', {
+                    body: req.body,
+                    file: req.file, // Log the file to debug
+                });
+                // Validate date range for update if provided
                 if (req.body.startDate && req.body.endDate) {
                     const startDate = new Date(req.body.startDate);
                     const endDate = new Date(req.body.endDate);
@@ -498,7 +124,7 @@ class PostController extends base_controller_1.default {
                         return;
                     }
                 }
-                // Get the existing post to preserve user info
+                // Get the existing post to preserve user info and missing fields
                 const existingPost = yield this.model.findById(postId);
                 if (!existingPost) {
                     res.status(404).json({ error: 'Post not found' });
@@ -509,12 +135,39 @@ class PostController extends base_controller_1.default {
                     res.status(403).json({ error: 'Not authorized to update this post' });
                     return;
                 }
-                // Check if the request includes updated user info
+                // Check if the request includes updated user info; if not, use the existing user info
                 const userInfo = req.body.user || existingPost.user;
-                // Preserve user info in the update
-                const post = Object.assign(Object.assign({}, req.body), { owner: userId, userId: userId, user: userInfo });
-                req.body = post;
-                _super.update.call(this, req, res);
+                // Create update data from body
+                const updateData = Object.assign(Object.assign({}, req.body), { owner: userId, userId: userId, user: userInfo });
+                // If a file was uploaded, process it and update the image path
+                if (req.file) {
+                    try {
+                        // Process the uploaded file using your existing file service
+                        const file = req.file;
+                        const newFilename = Date.now() + '.jpg';
+                        const uploadsDir = path_1.default.join(__dirname, '..', '..', 'public', 'uploads');
+                        yield promises_1.default.mkdir(uploadsDir, { recursive: true });
+                        const finalPath = path_1.default.join(uploadsDir, newFilename);
+                        // Process image with sharp
+                        yield (0, sharp_1.default)(file.path).rotate().jpeg({ quality: 90 }).toFile(finalPath);
+                        // Clean up temp file
+                        yield promises_1.default.unlink(file.path).catch((err) => {
+                            console.warn('Could not delete temporary file:', err);
+                        });
+                        // Update the image path in the post data
+                        updateData.image = `/uploads/${newFilename}`;
+                    }
+                    catch (fileError) {
+                        console.error('Error processing image:', fileError);
+                        // Continue with update even if image processing fails
+                    }
+                }
+                // Merge existing post data with the new data from req.body
+                const updatedData = Object.assign(Object.assign({}, existingPost.toObject()), updateData);
+                // Update the post
+                const updatedPost = yield this.model.findByIdAndUpdate(postId, updatedData, { new: true } // Return the updated document
+                );
+                res.status(200).json(updatedPost);
             }
             catch (error) {
                 console.error('Error updating post:', error);
@@ -825,56 +478,103 @@ class PostController extends base_controller_1.default {
             }
         });
     }
-    // Add comment to post
+    // async addComment(req: AuthRequest, res: Response): Promise<void> {
+    //   try {
+    //     // Make sure we're using the right parameter name
+    //     const postId = req.params.id; // Check if this should be 'id' or 'postId'
+    //     const { text } = req.body;
+    //     if (!text) {
+    //       res.status(400).json({ error: 'Comment text is required' });
+    //       return; // Make sure to return here to prevent further execution
+    //     }
+    //     if (!mongoose.Types.ObjectId.isValid(postId)) {
+    //       res.status(400).json({ error: 'Invalid post ID format' });
+    //       return; // Make sure to return here
+    //     }
+    //     const post = await postModel.findById(postId);
+    //     if (!post) {
+    //       res.status(404).json({ error: 'Post not found' });
+    //       return;
+    //     }
+    //     // Use req.user from auth middleware
+    //     const user = req.user;
+    //     if (!user || !user._id || !user.email) {
+    //       res.status(401).json({ error: 'User not authenticated or incomplete user info' });
+    //       return;
+    //     }
+    //     const commentData = {
+    //       text,
+    //       postId,
+    //       createdAt: new Date(),
+    //       user: {
+    //         _id: user._id.toString(),
+    //         email: user.email,
+    //         name: user.name || 'Anonymous',
+    //         avatar: user.avatar,
+    //       },
+    //     };
+    //     console.log('Comment data to be added:', commentData);
+    //     // Add comment to post and save
+    //     post.comments.push(commentData as any);
+    //     await post.save();
+    //     // Return the newly added comment
+    //     const newComment = post.comments[post.comments.length - 1];
+    //     res.status(201).json(newComment);
+    //   } catch (error: any) {
+    //     console.error('Error creating comment:', error.message, error);
+    //     res.status(500).json({ error: 'Failed to create comment' });
+    //   }
+    // }
     addComment(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
-            var _a;
             try {
                 const postId = req.params.id;
-                const userId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a._id) || req.params.userId;
                 const { text } = req.body;
                 if (!text) {
                     res.status(400).json({ error: 'Comment text is required' });
                     return;
                 }
-                // Validate post ID format
                 if (!mongoose_1.default.Types.ObjectId.isValid(postId)) {
                     res.status(400).json({ error: 'Invalid post ID format' });
                     return;
                 }
-                const post = yield this.model.findById(postId);
+                const post = yield posts_model_1.default.findById(postId);
                 if (!post) {
                     res.status(404).json({ error: 'Post not found' });
                     return;
                 }
-                // Get user info for the comment
-                const user = yield user_model_1.default.findById(userId);
-                if (!user) {
+                // Get user from JWT token
+                const userFromToken = req.user;
+                if (!userFromToken || !userFromToken._id || !userFromToken.email) {
+                    res.status(401).json({ error: 'User not authenticated or incomplete user info' });
+                    return;
+                }
+                // Fetch the complete user information from the database
+                const completeUser = yield user_model_1.default.findById(userFromToken._id);
+                if (!completeUser) {
                     res.status(404).json({ error: 'User not found' });
                     return;
                 }
-                // Add comment with user details
                 const commentData = {
-                    user: {
-                        _id: user._id.toString(),
-                        email: user.email,
-                        name: user.name || 'Anonymous',
-                        avatar: user.avatar,
-                    },
                     text,
-                    createdAt: new Date(),
                     postId,
+                    createdAt: new Date(),
+                    user: {
+                        _id: userFromToken._id.toString(),
+                        email: userFromToken.email,
+                        name: completeUser.name || 'Anonymous', // Use name from database
+                        avatar: completeUser.avatar,
+                    },
                 };
-                // Create a new comment subdocument by using the create method on the subdocument array
+                console.log('Comment data to be added:', commentData);
                 post.comments.push(commentData);
                 yield post.save();
-                // Return the new comment with populated user info
                 const newComment = post.comments[post.comments.length - 1];
-                res.status(200).json(newComment);
+                res.status(201).json(newComment);
             }
             catch (error) {
-                console.error('Error adding comment:', error);
-                res.status(500).json({ error: 'Failed to add comment' });
+                console.error('Error creating comment:', error.message, error);
+                res.status(500).json({ error: 'Failed to create comment' });
             }
         });
     }
@@ -960,6 +660,28 @@ class PostController extends base_controller_1.default {
             return false;
         }
         return true;
+    }
+    // In your posts_controller.ts
+    getById(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const postId = req.params.id;
+                const post = yield this.model.findById(postId);
+                if (!post) {
+                    res.status(404).json({ error: 'Post not found' });
+                    return;
+                }
+                // Ensure comments is always an array
+                if (!post.comments) {
+                    post.comments = [];
+                }
+                res.status(200).json(post);
+            }
+            catch (error) {
+                console.error('Error fetching post by ID:', error);
+                res.status(500).json({ error: 'Failed to fetch post' });
+            }
+        });
     }
 }
 exports.default = new PostController();

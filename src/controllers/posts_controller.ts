@@ -4,6 +4,9 @@ import { Request, Response } from 'express';
 import BaseController from './base_controller';
 import mongoose from 'mongoose';
 import { IComment } from '../models/comments_model';
+import path from 'path';
+import fs from 'fs/promises';
+import sharp from 'sharp';
 
 interface AuthRequest extends Request {
   user?: {
@@ -64,10 +67,62 @@ class PostController extends BaseController<IPost> {
     }
   }
 
+  // async update(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const userId = req.params.userId;
+  //     const postId = req.params.id;
+
+  //     // Validate date range for update if provided
+  //     if (req.body.startDate && req.body.endDate) {
+  //       const startDate = new Date(req.body.startDate);
+  //       const endDate = new Date(req.body.endDate);
+  //       if (endDate < startDate) {
+  //         res.status(400).json({ error: 'End date must be after start date' });
+  //         return;
+  //       }
+  //     }
+
+  //     // Get the existing post to preserve user info and missing fields
+  //     const existingPost = await this.model.findById(postId);
+  //     if (!existingPost) {
+  //       res.status(404).json({ error: 'Post not found' });
+  //       return;
+  //     }
+
+  //     // Ensure only the post owner can update it
+  //     if (existingPost.userId.toString() !== userId) {
+  //       res.status(403).json({ error: 'Not authorized to update this post' });
+  //       return;
+  //     }
+
+  //     // Check if the request includes updated user info; if not, use the existing user info
+  //     const userInfo = req.body.user || existingPost.user;
+
+  //     // Merge existing post data with the new data from req.body
+  //     const updatedData = {
+  //       ...existingPost.toObject(),
+  //       ...req.body,
+  //       owner: userId,
+  //       userId: userId,
+  //       user: userInfo,
+  //     };
+
+  //     req.body = updatedData;
+  //     super.update(req, res);
+  //   } catch (error) {
+  //     console.error('Error updating post:', error);
+  //     res.status(500).json({ error: 'Failed to update post' });
+  //   }
+  // }
   async update(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.params.userId;
       const postId = req.params.id;
+
+      console.log('Update request received:', {
+        body: req.body,
+        file: (req as any).file, // Log the file to debug
+      });
 
       // Validate date range for update if provided
       if (req.body.startDate && req.body.endDate) {
@@ -95,23 +150,59 @@ class PostController extends BaseController<IPost> {
       // Check if the request includes updated user info; if not, use the existing user info
       const userInfo = req.body.user || existingPost.user;
 
-      // Merge existing post data with the new data from req.body
-      const updatedData = {
-        ...existingPost.toObject(),
+      // Create update data from body
+      const updateData = {
         ...req.body,
         owner: userId,
         userId: userId,
         user: userInfo,
       };
 
-      req.body = updatedData;
-      super.update(req, res);
+      // If a file was uploaded, process it and update the image path
+      if ((req as any).file) {
+        try {
+          // Process the uploaded file using your existing file service
+          const file = (req as any).file;
+          const newFilename = Date.now() + '.jpg';
+          const uploadsDir = path.join(__dirname, '..', '..', 'public', 'uploads');
+          await fs.mkdir(uploadsDir, { recursive: true });
+          const finalPath = path.join(uploadsDir, newFilename);
+
+          // Process image with sharp
+          await sharp(file.path).rotate().jpeg({ quality: 90 }).toFile(finalPath);
+
+          // Clean up temp file
+          await fs.unlink(file.path).catch((err) => {
+            console.warn('Could not delete temporary file:', err);
+          });
+
+          // Update the image path in the post data
+          updateData.image = `/uploads/${newFilename}`;
+        } catch (fileError) {
+          console.error('Error processing image:', fileError);
+          // Continue with update even if image processing fails
+        }
+      }
+
+      // Merge existing post data with the new data from req.body
+      const updatedData = {
+        ...existingPost.toObject(),
+        ...updateData,
+      };
+
+      // Update the post
+      const updatedPost = await this.model.findByIdAndUpdate(
+        postId,
+        updatedData,
+        { new: true } // Return the updated document
+      );
+
+      res.status(200).json(updatedPost);
     } catch (error) {
       console.error('Error updating post:', error);
       res.status(500).json({ error: 'Failed to update post' });
     }
   }
-
   // Override getAll to populate user info if not already present
   async getAll(req: Request, res: Response): Promise<void> {
     try {
@@ -445,22 +536,75 @@ class PostController extends BaseController<IPost> {
       res.status(500).json({ error: 'Failed to toggle like' });
     }
   }
-  //Add comment to post
-  // Fix the addComment function in posts_controller.ts
+
+  // async addComment(req: AuthRequest, res: Response): Promise<void> {
+  //   try {
+  //     // Make sure we're using the right parameter name
+  //     const postId = req.params.id; // Check if this should be 'id' or 'postId'
+  //     const { text } = req.body;
+
+  //     if (!text) {
+  //       res.status(400).json({ error: 'Comment text is required' });
+  //       return; // Make sure to return here to prevent further execution
+  //     }
+
+  //     if (!mongoose.Types.ObjectId.isValid(postId)) {
+  //       res.status(400).json({ error: 'Invalid post ID format' });
+  //       return; // Make sure to return here
+  //     }
+
+  //     const post = await postModel.findById(postId);
+  //     if (!post) {
+  //       res.status(404).json({ error: 'Post not found' });
+  //       return;
+  //     }
+
+  //     // Use req.user from auth middleware
+  //     const user = req.user;
+  //     if (!user || !user._id || !user.email) {
+  //       res.status(401).json({ error: 'User not authenticated or incomplete user info' });
+  //       return;
+  //     }
+
+  //     const commentData = {
+  //       text,
+  //       postId,
+  //       createdAt: new Date(),
+  //       user: {
+  //         _id: user._id.toString(),
+  //         email: user.email,
+  //         name: user.name || 'Anonymous',
+  //         avatar: user.avatar,
+  //       },
+  //     };
+
+  //     console.log('Comment data to be added:', commentData);
+
+  //     // Add comment to post and save
+  //     post.comments.push(commentData as any);
+  //     await post.save();
+
+  //     // Return the newly added comment
+  //     const newComment = post.comments[post.comments.length - 1];
+  //     res.status(201).json(newComment);
+  //   } catch (error: any) {
+  //     console.error('Error creating comment:', error.message, error);
+  //     res.status(500).json({ error: 'Failed to create comment' });
+  //   }
+  // }
   async addComment(req: AuthRequest, res: Response): Promise<void> {
     try {
-      // Make sure we're using the right parameter name
-      const postId = req.params.id; // Check if this should be 'id' or 'postId'
+      const postId = req.params.id;
       const { text } = req.body;
 
       if (!text) {
         res.status(400).json({ error: 'Comment text is required' });
-        return; // Make sure to return here to prevent further execution
+        return;
       }
 
       if (!mongoose.Types.ObjectId.isValid(postId)) {
         res.status(400).json({ error: 'Invalid post ID format' });
-        return; // Make sure to return here
+        return;
       }
 
       const post = await postModel.findById(postId);
@@ -469,10 +613,17 @@ class PostController extends BaseController<IPost> {
         return;
       }
 
-      // Use req.user from auth middleware
-      const user = req.user;
-      if (!user || !user._id || !user.email) {
+      // Get user from JWT token
+      const userFromToken = req.user;
+      if (!userFromToken || !userFromToken._id || !userFromToken.email) {
         res.status(401).json({ error: 'User not authenticated or incomplete user info' });
+        return;
+      }
+
+      // Fetch the complete user information from the database
+      const completeUser = await userModel.findById(userFromToken._id);
+      if (!completeUser) {
+        res.status(404).json({ error: 'User not found' });
         return;
       }
 
@@ -481,20 +632,18 @@ class PostController extends BaseController<IPost> {
         postId,
         createdAt: new Date(),
         user: {
-          _id: user._id.toString(),
-          email: user.email,
-          name: user.name || 'Anonymous',
-          avatar: user.avatar,
+          _id: userFromToken._id.toString(),
+          email: userFromToken.email,
+          name: completeUser.name || 'Anonymous', // Use name from database
+          avatar: completeUser.avatar,
         },
       };
 
       console.log('Comment data to be added:', commentData);
 
-      // Add comment to post and save
       post.comments.push(commentData as any);
       await post.save();
 
-      // Return the newly added comment
       const newComment = post.comments[post.comments.length - 1];
       res.status(201).json(newComment);
     } catch (error: any) {
@@ -502,7 +651,6 @@ class PostController extends BaseController<IPost> {
       res.status(500).json({ error: 'Failed to create comment' });
     }
   }
-
   // Get comments for a post
   async getComments(req: Request, res: Response) {
     try {

@@ -50,14 +50,12 @@ app.use((req, res, next) => {
 });
 // Routes
 app.use('/posts', posts_route_1.default);
-app.use('/comments', comments_route_1.default);
+app.use('/posts/:postId/comments', comments_route_1.default);
+// app.use('/comments', commentsRoute);
 app.use('/auth', auth_route_1.default);
 app.use('/wishlist', wishlist_route_1.default);
 // Serve static files
 app.use('/uploads', express_1.default.static('public/uploads'));
-// נתיבי קבצים
-// הנתיב /file עבור קריאות POST לטעינת קבצים (למשל: POST http://localhost:3060/file/upload)
-// הנתיב /file-access עבור גישה לקבצים (למשל: GET http://localhost:3060/file-access/filename.jpg)
 app.use('/file', file_route_1.default);
 app.use('/file-access', file_access_route_1.default);
 app.get('/about', (req, res) => {

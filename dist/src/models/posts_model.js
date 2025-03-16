@@ -33,7 +33,7 @@ const PostSchema = new Schema({
     },
     bookedSeats: {
         type: Number,
-        required: true,
+        //required: true,
     },
     image: {
         type: String,

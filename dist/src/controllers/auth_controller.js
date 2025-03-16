@@ -48,7 +48,8 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             avatar: avatar || null,
         });
         // Generate JWT token
-        const token = jsonwebtoken_1.default.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRE });
+        //const token = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions);
+        const token = jsonwebtoken_1.default.sign({ _id: user._id, email: user.email, name: user.name, avatar: user.avatar }, process.env.TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRE });
         // Return response
         res.status(200).json({
             token,
@@ -71,8 +72,8 @@ const generateTokens = (user) => {
         return null;
     }
     const random = Math.random().toString();
-    const accessToken = jsonwebtoken_1.default.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRE });
-    const refreshToken = jsonwebtoken_1.default.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRE });
+    const accessToken = jsonwebtoken_1.default.sign({ _id: user._id, email: user.email, name: user.name, avatar: user.avatar }, process.env.TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRE });
+    const refreshToken = jsonwebtoken_1.default.sign({ _id: user._id, email: user.email, name: user.name, avatar: user.avatar }, process.env.TOKEN_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRE });
     if (user.refreshToken == null) {
         user.refreshToken = [];
     }
@@ -189,62 +190,32 @@ const refresh = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         return;
     }
 });
-// export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-//   const authorization = req.headers.authorization;
-//   const token = authorization && authorization.split(' ')[1];
-//   if (!token) {
-//     res.status(401).send('Access Denied');
-//     return;
-//   }
-//   if (!process.env.TOKEN_SECRET) {
-//     res.status(400).send('Server Error');
-//     return;
-//   }
-//   jwt.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
-//     if (err) {
-//       console.error('JWT Error:', err);
-//       res.status(401).send('Access Denied');
-//       return;
-//     }
-//     console.log('JWT Payload:', payload);
-//     const userId = (payload as Payload)._id;
-//     req.params.userId = userId;
-//     next();
-//   });
-// };
+// In auth_controller.ts, ensure the authMiddleware function is properly handling the token
 const authMiddleware = (req, res, next) => {
     const authorization = req.headers.authorization;
+    // Debugging info
+    console.log('Auth header received:', authorization);
     const token = authorization && authorization.split(' ')[1];
     if (!token) {
-        // Check if this is a wishlist route
-        if (req.path.startsWith('/wishlist')) {
-            res.status(401).json({ error: 'User ID not found in request' });
-            return;
-        }
-        else {
-            // For auth routes, use the original format that auth tests expect
-            res.status(401).send('Access Denied');
-            return;
-        }
+        console.log('No token provided');
+        res.status(401).send('Access Denied');
+        return;
     }
     if (!process.env.TOKEN_SECRET) {
-        res.status(400).send('Server Error');
+        console.log('Server missing TOKEN_SECRET');
+        res.status(500).send('Server Error');
         return;
     }
     jsonwebtoken_1.default.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
         if (err) {
-            console.error('JWT Error:', err);
-            // Again, differentiate between routes
-            if (req.path.startsWith('/wishlist')) {
-                res.status(401).json({ error: 'User ID not found in request' });
-            }
-            else {
-                return res.status(401).send('Access Denied');
-            }
+            console.error('Token verification error:', err);
+            res.status(401).send('Access Denied');
+            return;
         }
         console.log('JWT Payload:', payload);
-        const userId = payload._id;
-        req.params.userId = userId;
+        // Set both user and userId params
+        req.user = payload;
+        req.params.userId = req.user._id;
         next();
     });
 };

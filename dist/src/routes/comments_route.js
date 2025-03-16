@@ -1,58 +1,79 @@
 "use strict";
-// import express, { Request, Response } from 'express';
-// import { authMiddleware } from '../controllers/auth_controller';
-// import commentsController from '../controllers/comments_controller';
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// const router = express.Router();
+const express_1 = __importDefault(require("express"));
+const router = express_1.default.Router({ mergeParams: true }); // mergeParams מאפשר גישה ל־postId מהנתיב העליון
+const comments_controller_1 = __importDefault(require("../controllers/comments_controller"));
+const auth_controller_1 = require("../controllers/auth_controller");
+/**
+ * @swagger
+ * tags:
+ *   name: Post Comments
+ *   description: Endpoints for managing comments embedded in posts
+ */
+/**
+ * @swagger
+ * /posts/{postId}/comments:
+ *   get:
+ *     summary: Get all comments for a post
+ *     tags: [Post Comments]
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the post
+ *     responses:
+ *       200:
+ *         description: List of comments for the post
+ *       404:
+ *         description: Post not found
+ */
+router.get('/', comments_controller_1.default.getAll.bind(comments_controller_1.default));
+/**
+ * @swagger
+ * /posts/{postId}/comments/{commentId}:
+ *   get:
+ *     summary: Get a specific comment for a post
+ *     tags: [Post Comments]
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the post
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the comment
+ *     responses:
+ *       200:
+ *         description: Comment details
+ *       404:
+ *         description: Post or comment not found
+ */
+router.get('/:commentId', comments_controller_1.default.getById.bind(comments_controller_1.default));
 // /**
 //  * @swagger
-//  * tags:
-//  *   name: Comments
-//  *   description: Comment management
-//  */
-// /**
-//  * @swagger
-//  * /comments:
-//  *   get:
-//  *     summary: Get all comments
-//  *     tags: [Comments]
-//  *     responses:
-//  *       200:
-//  *         description: List of comments
-//  */
-// router.get('/', commentsController.getAll);
-// /**
-//  * @swagger
-//  * /comments/{id}:
-//  *   get:
-//  *     summary: Get comment by ID
-//  *     tags: [Comments]
+//  * /posts/{postId}/comments:
+//  *   post:
+//  *     summary: Add a comment to a post
+//  *     tags: [Post Comments]
+//  *     security:
+//  *       - bearerAuth: []
 //  *     parameters:
 //  *       - in: path
-//  *         name: id
+//  *         name: postId
 //  *         required: true
 //  *         schema:
 //  *           type: string
-//  *     responses:
-//  *       200:
-//  *         description: Comment details
-//  *       400:
-//  *         description: Invalid ID
-//  *       404:
-//  *         description: Comment not found
-//  */
-// router.get('/:id', authMiddleware, commentsController.getById);
-// /**
-//  * @swagger
-//  * /comments:
-//  *   post:
-//  *     summary: Create a new comment
-//  *     tags: [Comments]
-//  *     security:
-//  *       - bearerAuth: []
+//  *         description: The ID of the post
 //  *     requestBody:
 //  *       required: true
 //  *       content:
@@ -61,93 +82,87 @@ Object.defineProperty(exports, "__esModule", { value: true });
 //  *             type: object
 //  *             required:
 //  *               - text
-//  *               - postId
+//  *             properties:
+//  *               text:
+//  *                 type: string
+//  *             example:
+//  *               text: "This is a great post!"
 //  *     responses:
 //  *       201:
-//  *         description: Comment created
-//  *       400:
-//  *         description: Invalid input
-//  *       401:
-//  *         description: Unauthorized
-//  */
-// router.post('/', authMiddleware, commentsController.create);
-// /**
-//  * @swagger
-//  * /comments/{id}:
-//  *   put:
-//  *     summary: Update comment
-//  *     tags: [Comments]
-//  *     security:
-//  *       - bearerAuth: []
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema:
-//  *           type: string
-//  *     requestBody:
-//  *       required: true
-//  *     responses:
-//  *       200:
-//  *         description: Comment updated
-//  *       400:
-//  *         description: Invalid input
+//  *         description: Comment created successfully
 //  *       401:
 //  *         description: Unauthorized
 //  *       404:
-//  *         description: Comment not found
+//  *         description: Post not found
 //  */
-// router.put('/:id', authMiddleware, commentsController.update);
-// /**
-//  * @swagger
-//  * /comments/{id}:
-//  *   delete:
-//  *     summary: Delete comment
-//  *     tags: [Comments]
-//  *     security:
-//  *       - bearerAuth: []
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema:
-//  *           type: string
-//  *     responses:
-//  *       200:
-//  *         description: Comment deleted
-//  *       401:
-//  *         description: Unauthorized
-//  *       404:
-//  *         description: Comment not found
-//  */
-// router.delete('/:id', authMiddleware, commentsController.deleteItem);
-// export default router;
-// src/routes/comments_route.ts
-const express_1 = __importDefault(require("express"));
-const router = express_1.default.Router();
-const comments_controller_1 = __importDefault(require("../controllers/comments_controller"));
-const auth_controller_1 = require("../controllers/auth_controller");
+// router.post('/', authMiddleware, commentsController.create.bind(commentsController));
+// for creat comment
 /**
  * @swagger
- * tags:
- *   name: Comments
- *   description: The Comments managing API
+ * /posts/{postId}/comments:
+ *   post:
+ *     summary: Add a comment to a post
+ *     tags: [Post Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the post
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - text
+ *             properties:
+ *               text:
+ *                 type: string
+ *             example:
+ *               text: "This is a great post!"
+ *     responses:
+ *       201:
+ *         description: Comment created successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Post not found
  */
-// Get all comments
-router.get('/', (req, res) => {
-    comments_controller_1.default.getAll(req, res);
-});
-// Get comment by ID
-router.get('/:id', (req, res) => {
-    comments_controller_1.default.getById(req, res);
-});
-// Create a new comment (requires authentication)
-router.post('/', auth_controller_1.authMiddleware, (req, res) => {
-    comments_controller_1.default.create(req, res);
-});
-// Delete a comment (requires authentication)
-router.delete('/:id', auth_controller_1.authMiddleware, (req, res) => {
-    comments_controller_1.default.deleteItem(req, res);
-});
+router.post('/', auth_controller_1.authMiddleware, comments_controller_1.default.create.bind(comments_controller_1.default));
+/**
+ * @swagger
+ * /posts/{postId}/comments/{commentId}:
+ *   delete:
+ *     summary: Delete a comment from a post
+ *     tags: [Post Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the post
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the comment
+ *     responses:
+ *       200:
+ *         description: Comment deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Post or comment not found
+ */
+router.delete('/:commentId', auth_controller_1.authMiddleware, comments_controller_1.default.deleteItem.bind(comments_controller_1.default));
 exports.default = router;
 //# sourceMappingURL=comments_route.js.map

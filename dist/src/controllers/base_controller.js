@@ -48,6 +48,7 @@ class BaseController {
     }
     getById(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
+            // changed to geyByUserId
             const itemId = req.params.id;
             try {
                 const item = yield this.model.findById(itemId);
@@ -106,5 +107,8 @@ class BaseController {
         });
     }
 }
+const createController = (model) => {
+    return new BaseController(model);
+};
 exports.default = BaseController;
 //# sourceMappingURL=base_controller.js.map

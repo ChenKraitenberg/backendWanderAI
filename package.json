@@ -8,6 +8,7 @@
     "start": "cp .env_dev .env && tsc && node ./dist/src/app.js",
     "test": "dotenv -e .env_test -- tsc && jest --runInBand --detectOpenHandles --coverage --forceExit",
     "testAuth": "dotenv -e .env_test -- jest --detectOpenHandles --coverage --forceExit auth.test.ts",
+    "testBase": "dotenv -e .env_test -- jest --detectOpenHandles --forceExit base-controller.test.ts",
     "testPosts": "dotenv -e .env_test -- jest --detectOpenHandles --forceExit posts.test.ts",
     "testFileUpload": "dotenv -e .env_test -- jest --detectOpenHandles --forceExit file-upload.test.ts",
     "testFileAccess": "dotenv -e .env_test -- jest --detectOpenHandles --forceExit file-access.test.ts",

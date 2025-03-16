@@ -22,10 +22,13 @@ beforeAll(() => __awaiter(void 0, void 0, void 0, function* () {
     console.log('Starting file access route tests');
     app = yield (0, server_1.default)();
     // Create uploads directory if it doesn't exist
-    const uploadsDir = path_1.default.join(__dirname, '..', 'public', 'uploads');
+    // Use the same path resolution as your file-access-route.ts
+    const uploadsDir = path_1.default.join(process.cwd(), 'public', 'uploads');
     if (!fs_1.default.existsSync(uploadsDir)) {
         fs_1.default.mkdirSync(uploadsDir, { recursive: true });
     }
+    console.log(`Uploads directory path: ${uploadsDir}`);
+    console.log(`Uploads directory exists: ${fs_1.default.existsSync(uploadsDir)}`);
 }));
 afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
     console.log('Finishing file access route tests');
@@ -33,16 +36,34 @@ afterAll(() => __awaiter(void 0, void 0, void 0, function* () {
 }));
 describe('File Access Route Tests', () => {
     // Helper to create a test file in the uploads directory
+    // Uses the same path resolution as your file-access-route.ts
     const createTestFile = (filename, content = 'test content') => {
-        const uploadsDir = path_1.default.join(__dirname, '..', 'public', 'uploads');
+        const uploadsDir = path_1.default.join(process.cwd(), 'public', 'uploads');
         const filePath = path_1.default.join(uploadsDir, filename);
-        fs_1.default.writeFileSync(filePath, content);
+        console.log(`Creating test file at: ${filePath}`);
+        try {
+            fs_1.default.writeFileSync(filePath, content);
+            console.log(`File created successfully: ${fs_1.default.existsSync(filePath)}`);
+        }
+        catch (error) {
+            console.error(`Error creating file: ${error instanceof Error ? error.message : String(error)}`);
+        }
         return filePath;
     };
     // Helper to cleanup test files
     const cleanupTestFile = (filePath) => {
         if (fs_1.default.existsSync(filePath)) {
-            fs_1.default.unlinkSync(filePath);
+            console.log(`Deleting file: ${filePath}`);
+            try {
+                fs_1.default.unlinkSync(filePath);
+                console.log(`File deleted successfully`);
+            }
+            catch (error) {
+                console.error(`Error deleting file: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+        else {
+            console.log(`File not found for deletion: ${filePath}`);
         }
     };
     test('Should serve an existing file', () => __awaiter(void 0, void 0, void 0, function* () {
@@ -50,7 +71,11 @@ describe('File Access Route Tests', () => {
         const testContent = 'This is a test file content';
         const testFilePath = createTestFile(testFilename, testContent);
         try {
+            // Wait a moment to ensure file system has completed the write
+            yield new Promise((resolve) => setTimeout(resolve, 100));
+            console.log(`Before request, file exists: ${fs_1.default.existsSync(testFilePath)}`);
             const response = yield (0, supertest_1.default)(app).get(`/file-access/${testFilename}`);
+            console.log(`Response status: ${response.status}`);
             expect(response.status).toBe(200);
             expect(response.text).toBe(testContent);
             expect(response.header['content-type']).toContain('text/plain');
@@ -67,22 +92,20 @@ describe('File Access Route Tests', () => {
     test('Should reject filenames with directory traversal attempts', () => __awaiter(void 0, void 0, void 0, function* () {
         // Test with different directory traversal patterns
         const traversalPaths = ['../config.json', '..\\secret.txt', 'subfolder/../private.key', '%2e%2e/etc/passwd', 'normal/slash/file.txt', 'file\\with\\backslashes.jpg'];
-        for (const path of traversalPaths) {
-            const response = yield (0, supertest_1.default)(app).get(`/file-access/${path}`);
-            // Verify that the response is either:
-            // - 400 (Invalid filename)
-            // - 404 (File not found or route not found)
+        for (const testPath of traversalPaths) {
+            console.log(`Testing traversal path: ${testPath}`);
+            const response = yield (0, supertest_1.default)(app).get(`/file-access/${testPath}`);
+            console.log(`Traversal response status: ${response.status}`);
+            // Accept either 400 (Invalid filename) or 404 (File not found)
+            // Both responses indicate the file access was prevented
             expect([400, 404]).toContain(response.status);
             if (response.status === 400) {
                 expect(response.text).toBe('Invalid filename');
             }
             else if (response.status === 404) {
-                // Some servers might respond with HTML error pages for 404s
-                // We just need to verify it's not returning the actual file content
-                // and that access is being blocked
-                // For paths that should be caught by the traversal check,
-                // we just verify the status code is correct
-                expect(response.status).toBe(404);
+                // Express might return HTML error pages or custom messages
+                // Just check that we don't get a successful response
+                expect(response.status).not.toBe(200);
             }
         }
     }));
@@ -92,7 +115,11 @@ describe('File Access Route Tests', () => {
         const testFilename = 'test-image.jpg';
         const testFilePath = createTestFile(testFilename, jpegBuffer.toString());
         try {
+            // Wait a moment to ensure file system has completed the write
+            yield new Promise((resolve) => setTimeout(resolve, 100));
+            console.log(`Before request, image file exists: ${fs_1.default.existsSync(testFilePath)}`);
             const response = yield (0, supertest_1.default)(app).get(`/file-access/${testFilename}`);
+            console.log(`Image response status: ${response.status}`);
             expect(response.status).toBe(200);
             expect(response.header['content-type']).toContain('image/jpeg');
         }
@@ -105,7 +132,8 @@ describe('File Access Route Tests', () => {
         const testContent = 'Content for successful send test';
         const testFilePath = createTestFile(testFilename, testContent);
         try {
-            // Mock implementation to verify res.sendFile was called correctly
+            // Wait a moment to ensure file system has completed the write
+            yield new Promise((resolve) => setTimeout(resolve, 100));
             const response = yield (0, supertest_1.default)(app).get(`/file-access/${testFilename}`);
             expect(response.status).toBe(200);
             expect(response.text).toBe(testContent);
@@ -119,6 +147,8 @@ describe('File Access Route Tests', () => {
         const testContent = 'This file will be accessed concurrently';
         const testFilePath = createTestFile(testFilename, testContent);
         try {
+            // Wait a moment to ensure file system has completed the write
+            yield new Promise((resolve) => setTimeout(resolve, 100));
             // Send multiple concurrent requests
             const requests = [];
             for (let i = 0; i < 5; i++) {

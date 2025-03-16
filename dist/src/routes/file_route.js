@@ -20,6 +20,12 @@ const promises_1 = __importDefault(require("fs/promises"));
 const fs_1 = require("fs");
 const heic_convert_1 = __importDefault(require("heic-convert"));
 const router = express_1.default.Router();
+/**
+ * @swagger
+ * tags:
+ *   name: Files
+ *   description: File upload and management
+ */
 //
 // Helper function for HEIC/HEIF detection
 //
@@ -70,9 +76,30 @@ const upload = (0, multer_1.default)({
         }
     },
 });
-//
-// Updated /upload route with HEIC/HEIF conversion logic using heic-convert
-//
+/**
+ * @swagger
+ * /file/upload:
+ *   post:
+ *     summary: Upload an image file
+ *     tags: [Files]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded successfully
+ *       400:
+ *         description: No file uploaded
+ *       500:
+ *         description: Server error during upload
+ */
 router.post('/upload', upload.single('image'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const file = req.file;

@@ -57,7 +57,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Generate JWT token
-    const token = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions);
+    //const token = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions);
+    const token = jwt.sign(
+      { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+      process.env.TOKEN_SECRET as string,
+      { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions
+    );
 
     // Return response
     res.status(200).json({
@@ -80,9 +85,18 @@ const generateTokens = (user: IUser): { accessToken: string; refreshToken: strin
     return null;
   }
   const random = Math.random().toString();
-  const accessToken = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions);
 
-  const refreshToken = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.REFRESH_TOKEN_EXPIRE as string } as jwt.SignOptions);
+  const accessToken = jwt.sign(
+    { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+    process.env.TOKEN_SECRET as string,
+    { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions
+  );
+
+  const refreshToken = jwt.sign(
+    { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+    process.env.TOKEN_SECRET as string,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRE as string } as jwt.SignOptions
+  );
 
   if (user.refreshToken == null) {
     user.refreshToken = [];

@@ -1,7 +1,4 @@
 "use strict";
-// // src/controllers/wishlist_controller.ts
-// import wishlistModel from "../models/wishlist_model";
-// import { Request, Response } from "express";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -15,56 +12,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// class WishlistController {
-//   // Get all wishlist items for a user
-//   async getAll(req: Request, res: Response) {
-//     try {
-//       const userId = req.params.userId;
-//       const items = await wishlistModel.find({ userId });
-//       res.status(200).json(items);
-//     } catch (error) {
-//       console.error('Error fetching wishlist items:', error);
-//       res.status(500).json({ error: 'Failed to fetch wishlist items' });
-//     }
-//   }
-//   // Add item to wishlist
-//   async create(req: Request, res: Response) {
-//     try {
-//       const userId = req.params.userId;
-//       // Create wishlist item with user ID
-//       const wishlistItem = {
-//         ...req.body,
-//         userId
-//       };
-//       const newItem = await wishlistModel.create(wishlistItem);
-//       res.status(201).json(newItem);
-//     } catch (error) {
-//       console.error('Error creating wishlist item:', error);
-//       res.status(500).json({ error: 'Failed to create wishlist item' });
-//     }
-//   }
-//   // Remove item from wishlist
-//   async delete(req: Request, res: Response) {
-//     try {
-//       const userId = req.params.userId;
-//       const itemId = req.params.id;
-//       // Find and delete the item, ensuring it belongs to the user
-//       const result = await wishlistModel.findOneAndDelete({
-//         _id: itemId,
-//         userId: userId
-//       });
-//       if (!result) {
-//         return res.status(404).json({ error: 'Wishlist item not found' });
-//       }
-//       res.status(200).json({ message: 'Item removed from wishlist' });
-//     } catch (error) {
-//       console.error('Error removing wishlist item:', error);
-//       res.status(500).json({ error: 'Failed to remove wishlist item' });
-//     }
-//   }
-// }
-// export default new WishlistController();
-// src/controllers/wishlist_controller.ts
 const wishlist_model_1 = __importDefault(require("../models/wishlist_model"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 // Helper to extract userId from different parts of the request
@@ -127,40 +74,48 @@ class WishlistController {
                 const userId = getUserId(req);
                 if (!userId) {
                     console.error('No userId found in request');
-                    return res.status(401).json({ error: 'User ID not found in request' });
+                    res.status(401).json({ error: 'User ID not found in request' });
+                    return;
                 }
                 console.log(`Creating wishlist item for user: ${userId}`, req.body);
                 // Validate required fields
                 const { title, description, destination, duration, category } = req.body;
                 if (!title) {
-                    return res.status(400).json({ error: 'Missing required field: title' });
+                    res.status(400).json({ error: 'Missing required field: title' });
+                    return;
                 }
                 if (!description) {
-                    return res.status(400).json({ error: 'Missing required field: description' });
+                    res.status(400).json({ error: 'Missing required field: description' });
+                    return;
                 }
                 if (!destination) {
-                    return res.status(400).json({ error: 'Missing required field: destination' });
+                    res.status(400).json({ error: 'Missing required field: destination' });
+                    return;
                 }
                 if (!duration) {
-                    return res.status(400).json({ error: 'Missing required field: duration' });
+                    res.status(400).json({ error: 'Missing required field: duration' });
+                    return;
                 }
                 if (!category) {
-                    return res.status(400).json({ error: 'Missing required field: category' });
+                    res.status(400).json({ error: 'Missing required field: category' });
+                    return;
                 }
                 // Create wishlist item with user ID
                 const wishlistItem = Object.assign(Object.assign({}, req.body), { userId });
                 console.log('Creating wishlist item with data:', wishlistItem);
                 const newItem = yield wishlist_model_1.default.create(wishlistItem);
                 console.log('Successfully created wishlist item:', newItem._id);
-                return res.status(201).json(newItem);
+                res.status(201).json(newItem);
+                return;
             }
             catch (error) {
                 console.error('Error in create wishlist:', error);
                 if (!res.headersSent) {
-                    return res.status(500).json({
+                    res.status(500).json({
                         error: 'Failed to create wishlist item',
                         details: error instanceof Error ? error.message : 'Unknown error',
                     });
+                    return;
                 }
             }
         });
