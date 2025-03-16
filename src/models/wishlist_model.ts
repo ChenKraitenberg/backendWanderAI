@@ -1,4 +1,3 @@
-// src/models/wishlist_model.ts
 import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
@@ -38,6 +37,7 @@ const WishlistItemSchema = new Schema<IWishlistItem>({
   },
   itinerary: {
     type: [String],
+    required: false,
   },
   userId: {
     type: Schema.Types.String,
@@ -48,9 +48,19 @@ const WishlistItemSchema = new Schema<IWishlistItem>({
     type: Date,
     default: Date.now,
   },
-  image: {
-    type: String,
-  }
+  // image: {
+  //   type: String,
+  //   required: false,
+  // },
+});
+
+// Add index for better query performance
+WishlistItemSchema.index({ userId: 1 });
+
+// Add a pre-save hook for any custom logic before saving
+WishlistItemSchema.pre('save', function (next) {
+  // You can add custom logic here if needed
+  next();
 });
 
 const WishlistModel = mongoose.model<IWishlistItem>('Wishlist', WishlistItemSchema);

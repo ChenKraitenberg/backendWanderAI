@@ -8,6 +8,20 @@ import axios from 'axios';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        _id: string;
+        email: string;
+        name?: string;
+        avatar?: string;
+      };
+    }
+  }
+}
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name, avatar } = req.body;
@@ -43,7 +57,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Generate JWT token
-    const token = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions);
+    //const token = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions);
+    const token = jwt.sign(
+      { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+      process.env.TOKEN_SECRET as string,
+      { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions
+    );
 
     // Return response
     res.status(200).json({
@@ -66,9 +85,18 @@ const generateTokens = (user: IUser): { accessToken: string; refreshToken: strin
     return null;
   }
   const random = Math.random().toString();
-  const accessToken = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions);
 
-  const refreshToken = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.REFRESH_TOKEN_EXPIRE as string } as jwt.SignOptions);
+  const accessToken = jwt.sign(
+    { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+    process.env.TOKEN_SECRET as string,
+    { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions
+  );
+
+  const refreshToken = jwt.sign(
+    { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+    process.env.TOKEN_SECRET as string,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRE as string } as jwt.SignOptions
+  );
 
   if (user.refreshToken == null) {
     user.refreshToken = [];
@@ -204,27 +232,39 @@ type Payload = {
   _id: string;
 };
 
+// In auth_controller.ts, ensure the authMiddleware function is properly handling the token
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const authorization = req.headers.authorization;
+
+  // Debugging info
+  console.log('Auth header received:', authorization);
+
   const token = authorization && authorization.split(' ')[1];
   if (!token) {
+    console.log('No token provided');
     res.status(401).send('Access Denied');
     return;
   }
+
   if (!process.env.TOKEN_SECRET) {
-    res.status(400).send('Server Error');
+    console.log('Server missing TOKEN_SECRET');
+    res.status(500).send('Server Error');
     return;
   }
 
   jwt.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
     if (err) {
-      console.error('JWT Error:', err);
+      console.error('Token verification error:', err);
       res.status(401).send('Access Denied');
       return;
     }
+
     console.log('JWT Payload:', payload);
-    const userId = (payload as Payload)._id;
-    req.params.userId = userId;
+
+    // Set both user and userId params
+    req.user = payload as { _id: string; email: string; name?: string; avatar?: string };
+    req.params.userId = req.user._id;
+
     next();
   });
 };
@@ -311,12 +351,11 @@ const socialLogin = async (req: Request, res: Response) => {
         needsUpdate = true;
       }
 
-      // Update social provider if it wasn't set before
-      if (!user.socialProvider) {
-        console.log('Setting social provider to', provider);
-        user.socialProvider = provider;
-        needsUpdate = true;
-      }
+      // Always update social provider when using social login
+      // This is the fix - update socialProvider regardless of previous value
+      console.log('Setting social provider to', provider);
+      user.socialProvider = provider as 'google';
+      needsUpdate = true;
 
       if (needsUpdate) {
         console.log('Saving updated user information');
@@ -507,34 +546,19 @@ const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
-// const checkUserExists = async (req: Request, res: Response): Promise<void> => {
-//   try {
-//     const { email } = req.body;
-
-//     if (!email) {
-//       res.status(400).json({ message: 'Email is required', exists: false });
-//       return;
-//     }
-
-//     // Check if user exists with this email
-//     const existingUser = await userModel.findOne({ email });
-
-//     // Return whether the user exists and their ID if they do
-//     res.status(200).json({
-//       exists: !!existingUser,
-//       userId: existingUser ? existingUser._id : undefined,
-//     });
-//   } catch (error) {
-//     console.error('Error checking user existence:', error);
-//     res.status(500).json({ message: 'Server error', exists: false });
-//   }
-// };
 const checkUserExists = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
 
     if (!email) {
       res.status(400).json({ message: 'Email is required', exists: false });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      res.status(400).json({ error: 'Invalid email format' });
       return;
     }
 

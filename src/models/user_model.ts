@@ -8,7 +8,7 @@ export interface IUser {
   _id?: string;
   refreshToken?: string[];
   avatar?: string;
-  name: string; // Changed from optional to required
+  name: string;
   socialProvider?: 'google' | null;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -33,7 +33,7 @@ const userSchema = new Schema<IUser>({
   },
   name: {
     type: String,
-    required: true, // Name is now required
+    required: true,
   },
   socialProvider: {
     type: String,

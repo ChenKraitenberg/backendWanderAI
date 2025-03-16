@@ -55,7 +55,7 @@ const PostSchema = new Schema<IPost>({
   },
   bookedSeats: {
     type: Number,
-    required: true,
+    //required: true,
   },
   image: {
     type: String,
@@ -100,20 +100,20 @@ const PostSchema = new Schema<IPost>({
         },
         avatar: {
           type: String,
-        }
+        },
       },
       text: {
-      type: String,
-      required: true,
-    },
-    postId: {
-      type: String,
-      required: true,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
+        type: String,
+        required: true,
+      },
+      postId: {
+        type: String,
+        required: true,
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
     },
   ],
   owner: {

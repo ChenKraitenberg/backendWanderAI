@@ -40,13 +40,14 @@ class BaseController<T> {
   }
 
   async getById(req: Request, res: Response) {
+    // changed to geyByUserId
     const itemId = req.params.id;
     try {
       const item = await this.model.findById(itemId);
       if (item === null) {
-        return res.status(404).send('not found');
+        res.status(404).send('not found');
       } else {
-        return res.status(200).send(item);
+        res.status(200).send(item);
       }
     } catch (error) {
       res.status(400).send(error);
@@ -91,5 +92,9 @@ class BaseController<T> {
     }
   }
 }
+
+const createController = <T>(model: Model<T>) => {
+  return new BaseController(model);
+};
 
 export default BaseController;

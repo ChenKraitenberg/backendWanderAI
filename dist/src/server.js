@@ -20,17 +20,18 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
-//import postsRoute from './routes/posts_route';
-const trips_router_1 = __importDefault(require("./routes/trips_router"));
+const posts_route_1 = __importDefault(require("./routes/posts_route"));
 const comments_route_1 = __importDefault(require("./routes/comments_route"));
 const auth_route_1 = __importDefault(require("./routes/auth_route"));
-const file_route_1 = __importDefault(require("./routes/file_route"));
+const file_route_1 = __importDefault(require("./routes/file_route")); // נתיב להעלאת קבצים
+const wishlist_route_1 = __importDefault(require("./routes/wishlist_route"));
+const file_access_route_1 = __importDefault(require("./routes/file-access-route")); // נתיב לגישה לקבצים
 const cors_1 = __importDefault(require("cors"));
-const axios = require('axios');
+app.use(express_1.default.json());
 app.use((0, cors_1.default)({
-    origin: 'http://localhost:5173', // הדומיין של הפרונט
+    origin: 'http://localhost:5173', // Frontend domain
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use((req, res, next) => {
@@ -43,32 +44,45 @@ db.once('open', () => console.log('Connected to Database'));
 app.use(body_parser_1.default.json());
 app.use(body_parser_1.default.urlencoded({ extended: true }));
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', ' http://localhost:5173');
+    res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
     res.header('Access-Control-Allow-Methods', '*');
-    res.header('Access-Control-Allow-Headers', '*');
     next();
 });
-app.use('/trips', trips_router_1.default);
-app.use('/comments', comments_route_1.default);
+// Routes
+app.use('/posts', posts_route_1.default);
+app.use('/posts/:postId/comments', comments_route_1.default);
+// app.use('/comments', commentsRoute);
 app.use('/auth', auth_route_1.default);
+app.use('/wishlist', wishlist_route_1.default);
+// Serve static files
 app.use('/uploads', express_1.default.static('public/uploads'));
-//app.use('/uploads', express.static(path.resolve(__dirname, 'public/uploads')));
 app.use('/file', file_route_1.default);
+app.use('/file-access', file_access_route_1.default);
 app.get('/about', (req, res) => {
     res.send('Hello World!');
 });
 app.use('/public', express_1.default.static('public'));
 app.use('/storage', express_1.default.static('storage'));
 app.use(express_1.default.static('front'));
+// Swagger configuration
 const options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'Web Dev 2025 - D - REST API',
+            title: 'Travel App REST API',
             version: '1.0.0',
-            description: 'REST server including authentication using JWT',
+            description: 'REST server including authentication using JWT with social login integration',
         },
         servers: [{ url: 'http://localhost:' + process.env.PORT }],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                },
+            },
+        },
     },
     apis: ['./src/routes/*.ts'],
 };
@@ -81,6 +95,7 @@ const initApp = () => {
         }
         else {
             yield mongoose_1.default.connect(process.env.DB_CONNECTION);
+            console.log('Database connection established');
             resolve(app);
         }
     }));
