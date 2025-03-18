@@ -266,23 +266,87 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
  *             example:
  *               message: "Access Denied"
  */
+// router.put('/me', authMiddleware, async (req: Request, res: Response) => {
+//   try {
+//     const user = await userModel.findByIdAndUpdate(req.params.userId, req.body, { new: true });
+//     if (!user) {
+//       res.status(400).send('Access Denied');
+//       return;
+//     }
+//     res.json({
+//       _id: user._id,
+//       email: user.email,
+//       avatar: user.avatar,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// });
 router.put('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const user = await userModel.findByIdAndUpdate(req.params.userId, req.body, { new: true });
+    const userId = req.params.userId;
+    const updates = req.body;
+
+    // Update the user document
+    const user = await userModel.findByIdAndUpdate(userId, updates, { new: true });
+
     if (!user) {
       res.status(400).send('Access Denied');
       return;
     }
+
+    // If the name was updated, update all comments by this user in posts
+    if (updates.name) {
+      const postModel = require('../models/posts_model').default;
+
+      // Find all posts with comments by this user and update their names
+      await postModel.updateMany(
+        { 'comments.user._id': userId.toString() },
+        {
+          $set: {
+            'comments.$[elem].user.name': updates.name,
+          },
+        },
+        {
+          arrayFilters: [{ 'elem.user._id': userId.toString() }],
+          multi: true,
+        }
+      );
+
+      console.log(`Updated username in all comments for user ${userId}`);
+    }
+
+    // If avatar was updated, update all comments by this user
+    if (updates.avatar) {
+      const postModel = require('../models/posts_model').default;
+
+      await postModel.updateMany(
+        { 'comments.user._id': userId.toString() },
+        {
+          $set: {
+            'comments.$[elem].user.avatar': updates.avatar,
+          },
+        },
+        {
+          arrayFilters: [{ 'elem.user._id': userId.toString() }],
+          multi: true,
+        }
+      );
+
+      console.log(`Updated avatar in all comments for user ${userId}`);
+    }
+
     res.json({
       _id: user._id,
       email: user.email,
+      name: user.name,
       avatar: user.avatar,
     });
   } catch (error) {
+    console.error('Error updating user profile:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
-
 /**
  * @swagger
  * /auth/social-login:
