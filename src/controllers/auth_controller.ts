@@ -2,7 +2,7 @@
 import { NextFunction, Request, Response } from 'express';
 import userModel, { IUser } from '../models/user_model';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { Document } from 'mongoose';
 import axios from 'axios';
 import nodemailer from 'nodemailer';
@@ -56,17 +56,31 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       avatar: avatar || null,
     });
 
-    // Generate JWT token
-    //const token = jwt.sign({ _id: user._id, email: user.email }, process.env.TOKEN_SECRET as string, { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions);
-    const token = jwt.sign(
-      { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
-      process.env.TOKEN_SECRET as string,
-      { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions
-    );
+    // const token = jwt.sign(
+    //   { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+    //   process.env.TOKEN_SECRET as string,
+    //   { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions
+    // );
+    const tokens = generateTokens(user);
+    if (!tokens) {
+      res.status(500).json({ message: 'Failed to generate authentication tokens' });
+      return;
+    }
 
     // Return response
+    // res.status(200).json({
+    //   token,
+    //   user: {
+    //     _id: user._id,
+    //     email: user.email,
+    //     name: user.name,
+    //     avatar: user.avatar,
+    //   },
+    // });
     res.status(200).json({
-      token,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      _id: user._id,
       user: {
         _id: user._id,
         email: user.email,
@@ -80,32 +94,74 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// const generateTokens = (user: IUser): { accessToken: string; refreshToken: string } | null => {
+//   if (!process.env.TOKEN_SECRET) {
+//     return null;
+//   }
+//   const random = Math.random().toString();
+
+//   const accessToken = jwt.sign(
+//     { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+//     process.env.TOKEN_SECRET as string,
+//     { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions
+//   );
+
+//   const refreshToken = jwt.sign(
+//     { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
+//     process.env.TOKEN_SECRET as string,
+//     { expiresIn: process.env.REFRESH_TOKEN_EXPIRE as string } as jwt.SignOptions
+//   );
+
+//   if (user.refreshToken == null) {
+//     user.refreshToken = [];
+//   }
+//   user.refreshToken.push(refreshToken);
+//   return {
+//     accessToken: accessToken,
+//     refreshToken: refreshToken,
+//   };
+// };
 const generateTokens = (user: IUser): { accessToken: string; refreshToken: string } | null => {
-  if (!process.env.TOKEN_SECRET) {
+  try {
+    if (!process.env.TOKEN_SECRET) {
+      throw new Error('TOKEN_SECRET is not defined');
+    }
+
+    // Validate token expiration
+    const accessTokenExpire = process.env.TOKEN_EXPIRE || '1h';
+    const refreshTokenExpire = process.env.REFRESH_TOKEN_EXPIRE || '7d';
+
+    const accessToken = jwt.sign(
+      {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+      },
+      process.env.TOKEN_SECRET as string,
+      { expiresIn: accessTokenExpire } as SignOptions
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+      },
+      process.env.TOKEN_SECRET as string,
+      { expiresIn: refreshTokenExpire } as SignOptions
+    );
+
+    // Ensure refreshToken array exists
+    user.refreshToken = user.refreshToken || [];
+    user.refreshToken.push(refreshToken);
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    console.error('Token generation error:', error);
     return null;
   }
-  const random = Math.random().toString();
-
-  const accessToken = jwt.sign(
-    { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
-    process.env.TOKEN_SECRET as string,
-    { expiresIn: process.env.TOKEN_EXPIRE as string } as jwt.SignOptions
-  );
-
-  const refreshToken = jwt.sign(
-    { _id: user._id, email: user.email, name: user.name, avatar: user.avatar },
-    process.env.TOKEN_SECRET as string,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRE as string } as jwt.SignOptions
-  );
-
-  if (user.refreshToken == null) {
-    user.refreshToken = [];
-  }
-  user.refreshToken.push(refreshToken);
-  return {
-    accessToken: accessToken,
-    refreshToken: refreshToken,
-  };
 };
 
 const login = async (req: Request, res: Response) => {
@@ -155,21 +211,64 @@ type UserDocument = Document<unknown, {}, IUser> &
     __v: number;
   };
 
-const verifyAccessToken = (refreshToken: string | undefined) => {
+// const verifyAccessToken = (refreshToken: string | undefined) => {
+//   return new Promise<UserDocument>((resolve, reject) => {
+//     if (!refreshToken) {
+//       reject('Access Denied');
+//       return;
+//     }
+//     if (!process.env.TOKEN_SECRET) {
+//       reject('Server Error');
+//       return;
+//     }
+//     jwt.verify(refreshToken, process.env.TOKEN_SECRET, async (err: any, payload: any) => {
+//       if (err) {
+//         reject('Access Denied');
+//         return;
+//       }
+//       const userId = payload._id;
+//       try {
+//         const user = await userModel.findById(userId);
+//         if (!user) {
+//           reject('Access Denied');
+//           return;
+//         }
+//         if (!user.refreshToken || !user.refreshToken.includes(refreshToken)) {
+//           user.refreshToken = [];
+//           await user.save();
+//           reject('Access Denied');
+//           return;
+//         }
+//         user.refreshToken = user.refreshToken.filter((token) => token !== refreshToken);
+//         resolve(user);
+//       } catch (err) {
+//         reject('Access Denied');
+//         return;
+//       }
+//     });
+//   });
+// };
+const verifyAccessToken = (refreshToken: string | undefined): Promise<UserDocument> => {
   return new Promise<UserDocument>((resolve, reject) => {
     if (!refreshToken) {
       reject('Access Denied');
       return;
     }
+    // if (!process.env.REFRESH_TOKEN_SECRET) {
+    //   reject('Server Error');
+    //   return;
+    // }
     if (!process.env.TOKEN_SECRET) {
       reject('Server Error');
       return;
     }
+
     jwt.verify(refreshToken, process.env.TOKEN_SECRET, async (err: any, payload: any) => {
       if (err) {
         reject('Access Denied');
         return;
       }
+
       const userId = payload._id;
       try {
         const user = await userModel.findById(userId);
@@ -177,13 +276,17 @@ const verifyAccessToken = (refreshToken: string | undefined) => {
           reject('Access Denied');
           return;
         }
+
+        // Ensure refresh token exists in the user's refreshToken array
         if (!user.refreshToken || !user.refreshToken.includes(refreshToken)) {
-          user.refreshToken = [];
-          await user.save();
-          reject('Access Denied');
+          reject('Invalid refresh token');
           return;
         }
+
+        // Remove used refresh token and save the user
         user.refreshToken = user.refreshToken.filter((token) => token !== refreshToken);
+        await user.save();
+
         resolve(user);
       } catch (err) {
         reject('Access Denied');
@@ -196,26 +299,65 @@ const verifyAccessToken = (refreshToken: string | undefined) => {
 const logout = async (req: Request, res: Response) => {
   try {
     const user = await verifyAccessToken(req.body.refreshToken);
-    await user.save();
-    res.status(200).send('Logged out');
-  } catch (err) {
-    res.status(400).send('Access Denied');
-    return;
-  }
-};
-
-const refresh = async (req: Request, res: Response) => {
-  try {
-    const user = await verifyAccessToken(req.body.refreshToken);
-
-    // Generate new tokens
-    const tokens = generateTokens(user);
-    await user.save();
-
-    if (!tokens) {
+    if (!user) {
       res.status(400).send('Access Denied');
       return;
     }
+
+    // Remove the refresh token
+    if (!user.refreshToken) {
+      user.refreshToken = [];
+    }
+
+    user.refreshToken = user.refreshToken.filter((token) => token !== req.body.refreshToken);
+    await user.save();
+
+    res.status(200).send('Logged out');
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(400).send('Access Denied');
+  }
+};
+
+// const refresh = async (req: Request, res: Response) => {
+//   try {
+//     const user = await verifyAccessToken(req.body.refreshToken);
+
+//     // Generate new tokens
+//     const tokens = generateTokens(user);
+//     await user.save();
+
+//     if (!tokens) {
+//       res.status(400).send('Access Denied');
+//       return;
+//     }
+
+//     // Send response
+//     res.status(200).send({
+//       accessToken: tokens.accessToken,
+//       refreshToken: tokens.refreshToken,
+//     });
+//   } catch (err) {
+//     res.status(400).send('Access Denied');
+//     return;
+//   }
+// };
+const refresh = async (req: Request, res: Response) => {
+  try {
+    const user = await verifyAccessToken(req.body.refreshToken);
+    if (!user) {
+      res.status(400).send('Access Denied');
+      return;
+    }
+
+    // Generate new tokens
+    const tokens = generateTokens(user);
+    if (!tokens) {
+      res.status(500).send('Could not generate tokens');
+      return;
+    }
+
+    await user.save(); // Ensure user is saved with the new refreshToken
 
     // Send response
     res.status(200).send({
@@ -223,8 +365,8 @@ const refresh = async (req: Request, res: Response) => {
       refreshToken: tokens.refreshToken,
     });
   } catch (err) {
-    res.status(400).send('Access Denied');
-    return;
+    console.error('Refresh error:', err);
+    res.status(400).send({ message: 'Access Denied', error: err });
   }
 };
 
@@ -233,42 +375,108 @@ type Payload = {
 };
 
 // In auth_controller.ts, ensure the authMiddleware function is properly handling the token
+// export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+//   const authorization = req.headers.authorization;
+
+//   // Debugging info
+//   console.log('Auth header received:', authorization);
+
+//   const token = authorization && authorization.split(' ')[1];
+//   if (!token) {
+//     console.log('No token provided');
+//     res.status(401).send('Access Denied');
+//     return;
+//   }
+
+//   if (!process.env.TOKEN_SECRET) {
+//     console.log('Server missing TOKEN_SECRET');
+//     res.status(500).send('Server Error');
+//     return;
+//   }
+
+//   jwt.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
+//     if (err) {
+//       console.error('Token verification error:', err);
+//       res.status(401).send('Access Denied');
+//       return;
+//     }
+
+//     console.log('JWT Payload:', payload);
+
+//     // Set both user and userId params
+//     req.user = payload as { _id: string; email: string; name?: string; avatar?: string };
+//     req.params.userId = req.user._id;
+
+//     next();
+//   });
+// };
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const authorization = req.headers.authorization;
+  try {
+    const authorization = req.headers.authorization;
 
-  // Debugging info
-  console.log('Auth header received:', authorization);
-
-  const token = authorization && authorization.split(' ')[1];
-  if (!token) {
-    console.log('No token provided');
-    res.status(401).send('Access Denied');
-    return;
-  }
-
-  if (!process.env.TOKEN_SECRET) {
-    console.log('Server missing TOKEN_SECRET');
-    res.status(500).send('Server Error');
-    return;
-  }
-
-  jwt.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
-    if (err) {
-      console.error('Token verification error:', err);
-      res.status(401).send('Access Denied');
+    if (!authorization) {
+      res.status(401).json({
+        message: 'Authorization header is missing',
+        error: 'Unauthorized',
+      });
       return;
     }
 
-    console.log('JWT Payload:', payload);
+    const token = authorization.split(' ')[1];
 
-    // Set both user and userId params
-    req.user = payload as { _id: string; email: string; name?: string; avatar?: string };
-    req.params.userId = req.user._id;
+    if (!token) {
+      res.status(401).json({
+        message: 'Bearer token is missing',
+        error: 'Unauthorized',
+      });
+    }
 
-    next();
-  });
+    if (!process.env.TOKEN_SECRET) {
+      res.status(500).json({
+        message: 'Server configuration error',
+        error: 'Missing token secret',
+      });
+      return;
+    }
+
+    jwt.verify(token, process.env.TOKEN_SECRET, (err, payload) => {
+      if (err) {
+        let errorMessage = 'Invalid token';
+
+        switch (err.name) {
+          case 'TokenExpiredError':
+            errorMessage = 'Token has expired';
+            break;
+          case 'JsonWebTokenError':
+            errorMessage = 'Invalid token signature';
+            break;
+        }
+
+        return res.status(401).json({
+          message: errorMessage,
+          error: 'Unauthorized',
+        });
+      }
+
+      // Attach user to request
+      req.user = payload as {
+        _id: string;
+        email: string;
+        name?: string;
+        avatar?: string;
+      };
+      req.params.userId = req.user._id;
+
+      next();
+    });
+  } catch (error) {
+    console.error('Authentication middleware error:', error);
+    res.status(500).json({
+      message: 'Internal server error during authentication',
+      error: 'Server Error',
+    });
+  }
 };
-
 const socialLogin = async (req: Request, res: Response) => {
   try {
     const { provider, token, email, name, avatar } = req.body;
