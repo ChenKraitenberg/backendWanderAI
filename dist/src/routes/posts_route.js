@@ -209,7 +209,7 @@ router.get('/:id', posts_controller_1.default.getById.bind(posts_controller_1.de
  *                 description: New name for the post (optional)
  *               description:
  *                 type: string
- *                 description: New description for the post (optional)
+ *                 description: Detailed description of the post (optional)
  *               startDate:
  *                 type: string
  *                 format: date-time
@@ -224,6 +224,13 @@ router.get('/:id', posts_controller_1.default.getById.bind(posts_controller_1.de
  *               maxSeats:
  *                 type: number
  *                 description: New maximum seats (optional)
+ *               tripType:
+ *                 type: string
+ *                 enum: ['RELAXED', 'MODERATE', 'INTENSIVE']
+ *                 description: Intensity level of the trip (optional)
+ *               destination:
+ *                type: string
+ *                description: New destination (optional)
  *               image:
  *                 type: string
  *                 format: binary
@@ -231,12 +238,30 @@ router.get('/:id', posts_controller_1.default.getById.bind(posts_controller_1.de
  *     responses:
  *       200:
  *         description: Post updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 updatedPost:
+ *                   type: object
  *       401:
  *         description: Unauthorized
  *       404:
  *         description: Post not found
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid trip type. Must be one of: RELAXED, MODERATE, INTENSIVE"
  */
-//router.patch('/:id', authMiddleware, postsController.update.bind(postsController));
 router.patch('/:id', auth_controller_1.authMiddleware, upload.single('image'), posts_controller_1.default.update.bind(posts_controller_1.default));
 /**
  * @swagger
@@ -284,41 +309,6 @@ router.delete('/:id', auth_controller_1.authMiddleware, posts_controller_1.defau
  *         description: Post not found
  */
 router.post('/:id/like', auth_controller_1.authMiddleware, posts_controller_1.default.toggleLike.bind(posts_controller_1.default));
-/**
- * @swagger
- * /posts/{id}/comment:
- *   post:
- *     summary: Add a comment to a post
- *     tags: [Posts]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - text
- *             properties:
- *               text:
- *                 type: string
- *     responses:
- *       200:
- *         description: Comment added successfully
- *       400:
- *         description: Bad request (missing text)
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Post not found
- */
 router.post('/:id/comment', auth_controller_1.authMiddleware, posts_controller_1.default.addComment.bind(posts_controller_1.default));
 exports.default = router;
 //# sourceMappingURL=posts_route.js.map

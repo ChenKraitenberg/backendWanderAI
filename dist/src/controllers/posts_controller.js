@@ -115,6 +115,16 @@ class PostController extends base_controller_1.default {
                     body: req.body,
                     file: req.file, // Log the file to debug
                 });
+                // Validate trip type if provided
+                if (req.body.tripType) {
+                    const validTripTypes = ['RELAXED', 'MODERATE', 'INTENSIVE'];
+                    if (!validTripTypes.includes(req.body.tripType)) {
+                        res.status(400).json({
+                            error: `Invalid trip type. Must be one of: ${validTripTypes.join(', ')}`,
+                        });
+                        return;
+                    }
+                }
                 // Validate date range for update if provided
                 if (req.body.startDate && req.body.endDate) {
                     const startDate = new Date(req.body.startDate);

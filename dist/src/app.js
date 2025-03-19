@@ -13,12 +13,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const server_1 = __importDefault(require("./server"));
-const port = process.env.PORT;
+const port = process.env.PORT ? parseInt(process.env.PORT) : 3000; // המר למספר עם ערך ברירת מחדל
+const https_1 = __importDefault(require("https"));
+const fs_1 = __importDefault(require("fs"));
 const tmpFunc = () => __awaiter(void 0, void 0, void 0, function* () {
     const app = yield (0, server_1.default)();
-    app.listen(port, () => {
-        console.log(`Example app listening at http://localhost:${port}`);
-    });
+    if (process.env.NODE_ENV != "production") {
+        app.listen(port, () => {
+            console.log(`Example app listening at http://${process.env.DOMAIN_BASE || 'https://node113.cs.colman.ac.il'}:${port}`);
+        });
+    }
+    else {
+        const prop = {
+            key: fs_1.default.readFileSync("../client-key.pem"),
+            cert: fs_1.default.readFileSync("../client-cert.pem")
+        };
+        https_1.default.createServer(prop, app).listen(port);
+    }
 });
 tmpFunc();
 //# sourceMappingURL=app.js.map

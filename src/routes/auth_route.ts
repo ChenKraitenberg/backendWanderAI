@@ -199,11 +199,45 @@ router.post('/logout', authController.logout);
  *             example:
  *               message: "Access Denied"
  */
+// router.get('/me', authMiddleware, async (req: Request, res: Response) => {
+//   try {
+//     const userId = req.params.userId;
+
+//     // If we already sent a response via authMiddleware, don't try to send another one
+//     if (res.headersSent) {
+//       return;
+//     }
+
+//     const user = await userModel.findById(userId);
+//     if (!user) {
+//       res.status(400).send('User not found');
+//       return;
+//     }
+
+//     res.status(200).json({
+//       _id: user._id,
+//       email: user.email,
+//       name: user.name,
+//       avatar: user.avatar,
+//     });
+//   } catch (error) {
+//     // Check if headers were already sent
+//     if (!res.headersSent) {
+//       res.status(500).json({ message: 'Internal server error' });
+//     }
+//   }
+// });
 router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = req.params.userId;
+    // השתמש ב-req.user._id במקום req.params.userId
+    const userId = req.user?._id;
 
-    // If we already sent a response via authMiddleware, don't try to send another one
+    if (!userId) {
+      res.status(401).send('Access Denied');
+      return;
+    }
+
+    // אם כבר שלחנו תשובה דרך ה-middleware, אל תנסה לשלוח עוד אחת
     if (res.headersSent) {
       return;
     }
@@ -221,13 +255,12 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
       avatar: user.avatar,
     });
   } catch (error) {
-    // Check if headers were already sent
+    // בדוק אם headers כבר נשלחו
     if (!res.headersSent) {
       res.status(500).json({ message: 'Internal server error' });
     }
   }
 });
-
 /**
  * @swagger
  * /auth/me:
