@@ -10,6 +10,7 @@ import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUI from 'swagger-ui-express';
 import cors from 'cors';
 import fs from 'fs';
+import axios from 'axios';
 
 // Import routes
 import postsRoute from './routes/posts_route';
@@ -160,6 +161,36 @@ app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(specs));
 //   console.log(`Serving profile from exact path: ${indexPath}`);
 //   res.sendFile(indexPath);
 // });
+
+
+app.post('/api/ai/generate', async (req, res) => {
+  try {
+    console.log('AI generate request received');
+    const HF_API_TOKEN = process.env.HF_API_TOKEN || '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';
+    
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1',
+      req.body,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${HF_API_TOKEN}`
+        }
+      }
+    );
+    
+    console.log('AI response received successfully');
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Error calling Hugging Face API:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate trip content',
+      details: error.response?.data || error.message || String(error)
+    });
+  }
+});
+
+
 
 // Fallback route with enhanced logging
 app.get('*', (req: ExpressRequest, res: ExpressResponse) => {

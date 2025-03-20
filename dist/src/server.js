@@ -23,6 +23,7 @@ const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const cors_1 = __importDefault(require("cors"));
 const fs_1 = __importDefault(require("fs"));
+const axios_1 = __importDefault(require("axios"));
 // Import routes
 const posts_route_1 = __importDefault(require("./routes/posts_route"));
 const comments_route_1 = __importDefault(require("./routes/comments_route"));
@@ -148,6 +149,28 @@ app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.de
 //   console.log(`Serving profile from exact path: ${indexPath}`);
 //   res.sendFile(indexPath);
 // });
+app.post('/api/ai/generate', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        console.log('AI generate request received');
+        const HF_API_TOKEN = process.env.HF_API_TOKEN || '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';
+        const response = yield axios_1.default.post('https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1', req.body, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${HF_API_TOKEN}`
+            }
+        });
+        console.log('AI response received successfully');
+        res.json(response.data);
+    }
+    catch (error) {
+        console.error('Error calling Hugging Face API:', error);
+        res.status(500).json({
+            error: 'Failed to generate trip content',
+            details: ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message || String(error)
+        });
+    }
+}));
 // Fallback route with enhanced logging
 app.get('*', (req, res) => {
     console.log(`Fallback route hit for ${req.url}, serving: /home/st111/backendWanderAI/front/index.html`);
