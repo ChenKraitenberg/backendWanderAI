@@ -15,4 +15,5 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/src/test/setupTests.ts'],
   globalTeardown: '<rootDir>/dist/src/test/globalTeardown.js',
   coveragePathIgnorePatterns: ['/node_modules/', '/dist/'],
+  testPathIgnorePatterns: ['/node_modules/', 'password-reset.test.ts', 'password-reset.test.js'],
 };

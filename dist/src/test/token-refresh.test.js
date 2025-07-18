@@ -54,7 +54,8 @@ describe('Token Refresh API', () => {
     it('should reject invalid refresh tokens', () => __awaiter(void 0, void 0, void 0, function* () {
         const response = yield (0, supertest_1.default)(app).post('/auth/refresh').send({ refreshToken: 'invalid-token' });
         expect(response.statusCode).toBe(400);
-        expect(response.text).toBe('Access Denied');
+        //expect(response.text).toBe('Access Denied');
+        expect(response.body).toHaveProperty('message');
     }));
     it('should logout successfully', () => __awaiter(void 0, void 0, void 0, function* () {
         const response = yield (0, supertest_1.default)(app).post('/auth/logout').send({ refreshToken });
@@ -64,7 +65,8 @@ describe('Token Refresh API', () => {
     it('should reject refresh after logout', () => __awaiter(void 0, void 0, void 0, function* () {
         const response = yield (0, supertest_1.default)(app).post('/auth/refresh').send({ refreshToken });
         expect(response.statusCode).toBe(400);
-        expect(response.text).toBe('Access Denied');
+        // expect(response.text).toBe('Access Denied');
+        expect(response.body).toHaveProperty('message');
     }));
 });
 //# sourceMappingURL=token-refresh.test.js.map

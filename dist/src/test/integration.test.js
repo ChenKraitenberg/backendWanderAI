@@ -69,7 +69,9 @@ describe('Travel App Integration Tests', () => {
             name: 'Integration Tester',
         });
         expect(registerResponse.status).toBe(200);
-        expect(registerResponse.body).toHaveProperty('token');
+        //expect(registerResponse.body).toHaveProperty('token');
+        expect(registerResponse.body).toHaveProperty('accessToken');
+        expect(registerResponse.body).toHaveProperty('refreshToken');
         expect(registerResponse.body).toHaveProperty('user');
         expect(registerResponse.body.user).toHaveProperty('email', 'integration@test.com');
         // 2. Login with the registered user
@@ -93,7 +95,7 @@ describe('Travel App Integration Tests', () => {
         const testImagePath = createTestFile('integration_test_image.jpg', createTestImageBuffer());
         try {
             // 1. Upload an image
-            const uploadResponse = yield (0, supertest_1.default)(app).post('/file/upload').set('Authorization', `Bearer ${accessToken}`).attach('image', testImagePath);
+            const uploadResponse = yield (0, supertest_1.default)(app).post('/file/upload').set('Authorization', `JWT ${accessToken}`).attach('image', testImagePath);
             expect(uploadResponse.status).toBe(200);
             expect(uploadResponse.body).toHaveProperty('url');
             expect(uploadResponse.body).toHaveProperty('message', 'File uploaded successfully');
@@ -119,7 +121,7 @@ describe('Travel App Integration Tests', () => {
         const testImagePath = createTestFile('post_test_image.jpg', createTestImageBuffer());
         let imageUrl;
         try {
-            const uploadResponse = yield (0, supertest_1.default)(app).post('/file/upload').set('Authorization', `Bearer ${accessToken}`).attach('image', testImagePath);
+            const uploadResponse = yield (0, supertest_1.default)(app).post('/file/upload').set('Authorization', `JWT ${accessToken}`).attach('image', testImagePath);
             imageUrl = uploadResponse.body.url;
         }
         finally {

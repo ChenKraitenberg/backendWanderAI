@@ -52,7 +52,8 @@ describe('Token Refresh API', () => {
     const response = await request(app).post('/auth/refresh').send({ refreshToken: 'invalid-token' });
 
     expect(response.statusCode).toBe(400);
-    expect(response.text).toBe('Access Denied');
+    //expect(response.text).toBe('Access Denied');
+    expect(response.body).toHaveProperty('message');
   });
 
   it('should logout successfully', async () => {
@@ -66,6 +67,7 @@ describe('Token Refresh API', () => {
     const response = await request(app).post('/auth/refresh').send({ refreshToken });
 
     expect(response.statusCode).toBe(400);
-    expect(response.text).toBe('Access Denied');
+    // expect(response.text).toBe('Access Denied');
+    expect(response.body).toHaveProperty('message');
   });
 });

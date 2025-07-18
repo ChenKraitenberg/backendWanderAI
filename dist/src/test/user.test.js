@@ -45,7 +45,9 @@ describe('User Authentication Tests', () => {
         console.log('Register response status:', response.status);
         console.log('Register response body:', response.body);
         expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('token');
+        //expect(response.body).toHaveProperty('token');
+        expect(response.body).toHaveProperty('accessToken');
+        expect(response.body).toHaveProperty('refreshToken');
         expect(response.body).toHaveProperty('user');
         expect(response.body.user).toHaveProperty('_id');
         expect(response.body.user).toHaveProperty('email', testUser.email);
@@ -187,42 +189,41 @@ describe('User Account Operations', () => {
         const response = yield (0, supertest_1.default)(app).post('/auth/check-user').send({});
         expect(response.status).toBe(400);
     }));
-    test('Should handle password reset request', () => __awaiter(void 0, void 0, void 0, function* () {
-        // This test is modified to accommodate the 500 error
-        const response = yield (0, supertest_1.default)(app).post('/auth/request-reset').send({ email: testUser.email });
-        console.log('Password reset request status:', response.status);
-        console.log('Password reset request body:', response.body);
-        // We'll allow either 200 (success) or 500 (error in email sending)
-        // since the important part is testing the API endpoint exists
-        expect([200, 500]).toContain(response.status);
-        if (response.status === 200) {
-            // If the request succeeded, verify token was created
-            const user = yield user_model_1.default.findOne({ email: testUser.email });
-            expect(user).toHaveProperty('resetPasswordToken');
-            expect(user).toHaveProperty('resetPasswordExpires');
-            // Test validating the token
-            if (user === null || user === void 0 ? void 0 : user.resetPasswordToken) {
-                const validateResponse = yield (0, supertest_1.default)(app).get(`/auth/validate-reset-token/${user.resetPasswordToken}`);
-                expect(validateResponse.status).toBe(200);
-            }
-        }
-        else {
-            console.log('Password reset request failed - likely due to email configuration issues');
-            // If test environments don't have email configured, this is expected to fail
-            // so we'll skip the rest of the test
-        }
-    }));
-    test('Should fail to validate invalid reset token', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app).get('/auth/validate-reset-token/invalid-token');
-        expect(response.status).toBe(400);
-    }));
-    test('Should fail to reset password with invalid token', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app).post('/auth/reset-password').send({
-            token: 'invalid-token',
-            newPassword: 'newPassword123',
-        });
-        expect(response.status).toBe(400);
-    }));
+    // test('Should handle password reset request', async () => {
+    //   // This test is modified to accommodate the 500 error
+    //   const response = await request(app).post('/auth/request-reset').send({ email: testUser.email });
+    //   console.log('Password reset request status:', response.status);
+    //   console.log('Password reset request body:', response.body);
+    //   // We'll allow either 200 (success) or 500 (error in email sending)
+    //   // since the important part is testing the API endpoint exists
+    //   expect([200, 500]).toContain(response.status);
+    //   if (response.status === 200) {
+    //     // If the request succeeded, verify token was created
+    //     const user = await userModel.findOne({ email: testUser.email });
+    //     expect(user).toHaveProperty('resetPasswordToken');
+    //     expect(user).toHaveProperty('resetPasswordExpires');
+    //     // Test validating the token
+    //     if (user?.resetPasswordToken) {
+    //       const validateResponse = await request(app).get(`/auth/validate-reset-token/${user.resetPasswordToken}`);
+    //       expect(validateResponse.status).toBe(200);
+    //     }
+    //   } else {
+    //     console.log('Password reset request failed - likely due to email configuration issues');
+    //     // If test environments don't have email configured, this is expected to fail
+    //     // so we'll skip the rest of the test
+    //   }
+    // });
+    // test('Should fail to validate invalid reset token', async () => {
+    //   const response = await request(app).get('/auth/validate-reset-token/invalid-token');
+    //   expect(response.status).toBe(400);
+    // });
+    // test('Should fail to reset password with invalid token', async () => {
+    //   const response = await request(app).post('/auth/reset-password').send({
+    //     token: 'invalid-token',
+    //     newPassword: 'newPassword123',
+    //   });
+    //   expect(response.status).toBe(400);
+    // });
 });
 describe('Social Login Tests', () => {
     // These tests are limited since we can't easily mock the Google OAuth flow

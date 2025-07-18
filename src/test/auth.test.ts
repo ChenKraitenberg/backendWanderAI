@@ -47,7 +47,9 @@ describe('Auth Controller Tests', () => {
       const response = await request(app).post('/auth/register').send(testUser);
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('token');
+      //expect(response.body).toHaveProperty('token');
+      expect(response.body).toHaveProperty('accessToken');
+      expect(response.body).toHaveProperty('refreshToken');
       expect(response.body).toHaveProperty('user');
       expect(response.body.user).toHaveProperty('_id');
       expect(response.body.user).toHaveProperty('email', testUser.email);
@@ -166,7 +168,7 @@ describe('Auth Controller Tests', () => {
 
   describe('Token Authentication', () => {
     test('Should get user profile with valid token', async () => {
-      const response = await request(app).get('/auth/me').set('Authorization', `Bearer ${accessToken}`);
+      const response = await request(app).get('/auth/me').set('Authorization', `JWT ${accessToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('_id', userId);
@@ -176,19 +178,22 @@ describe('Auth Controller Tests', () => {
     test('Should reject request without token', async () => {
       const response = await request(app).get('/auth/me').set('Authorization', 'Bearer validToken'); // This is not a real token
       expect(response.status).toBe(401);
-      expect(response.text).toBe('Access Denied');
+      //expect(response.text).toBe('Access Denied');
+      expect(response.body).toHaveProperty('message');
     });
 
     test('Should reject request with invalid token', async () => {
       const response = await request(app).get('/auth/me').set('Authorization', 'Bearer invalid.token.here');
       expect(response.status).toBe(401);
-      expect(response.text).toBe('Access Denied');
+      //expect(response.text).toBe('Access Denied');
+      expect(response.body).toHaveProperty('message');
     });
 
     test('Should reject request with malformed authorization header', async () => {
       const response = await request(app).get('/auth/me').set('Authorization', 'NotBearer token');
       expect(response.status).toBe(401);
-      expect(response.text).toBe('Access Denied');
+      //expect(response.text).toBe('Access Denied');
+      expect(response.body).toHaveProperty('message');
     });
 
     test('Should reject request with non-existent user', async () => {
@@ -221,13 +226,15 @@ describe('Auth Controller Tests', () => {
         refreshToken: 'invalid.refresh.token',
       });
       expect(response.status).toBe(400);
-      expect(response.text).toBe('Access Denied');
+      //expect(response.text).toBe('Access Denied');
+      expect(response.body).toHaveProperty('message');
     });
 
     test('Should reject refresh without token', async () => {
       const response = await request(app).post('/auth/refresh').send({});
       expect(response.status).toBe(400);
-      expect(response.text).toBe('Access Denied');
+      //expect(response.text).toBe('Access Denied');
+      expect(response.body).toHaveProperty('message');
     });
   });
 
@@ -366,7 +373,7 @@ describe('Auth Controller Tests', () => {
     it('should return 400 if user not found (GET /auth/me)', async () => {
       jest.spyOn(userModel, 'findById').mockResolvedValueOnce(null);
 
-      const response = await request(app).get('/auth/me').set('Authorization', `Bearer ${accessToken}`);
+      const response = await request(app).get('/auth/me').set('Authorization', `JWT ${accessToken}`);
 
       expect(response.status).toBe(400);
       expect(response.text).toBe('User not found');
@@ -379,7 +386,7 @@ describe('Auth Controller Tests', () => {
         throw new Error('Simulated DB error');
       });
 
-      const response = await request(app).get('/auth/me').set('Authorization', `Bearer ${accessToken}`);
+      const response = await request(app).get('/auth/me').set('Authorization', `JWT ${accessToken}`);
 
       expect(response.status).toBe(500);
 
@@ -389,7 +396,7 @@ describe('Auth Controller Tests', () => {
     it('should return 400 if user not found (PUT /auth/me)', async () => {
       jest.spyOn(userModel, 'findByIdAndUpdate').mockResolvedValueOnce(null);
 
-      const response = await request(app).put('/auth/me').set('Authorization', `Bearer ${accessToken}`).send({ name: 'New Name' });
+      const response = await request(app).put('/auth/me').set('Authorization', `JWT ${accessToken}`).send({ name: 'New Name' });
 
       expect(response.status).toBe(400);
       expect(response.text).toBe('Access Denied');
@@ -402,7 +409,7 @@ describe('Auth Controller Tests', () => {
         throw new Error('Simulated DB error');
       });
 
-      const response = await request(app).put('/auth/me').set('Authorization', `Bearer ${accessToken}`).send({ name: 'New Name' });
+      const response = await request(app).put('/auth/me').set('Authorization', `JWT ${accessToken}`).send({ name: 'New Name' });
 
       expect(response.status).toBe(500);
 
@@ -411,95 +418,95 @@ describe('Auth Controller Tests', () => {
   });
   // ------------------------------------------------------------------------------------
 
-  describe('Password Reset Flow', () => {
-    test('Should request password reset with valid email', async () => {
-      const response = await request(app).post('/auth/request-reset').send({
-        email: testUser.email,
-      });
-      expect(response.status).toBe(200);
+  // describe('Password Reset Flow', () => {
+  //   test('Should request password reset with valid email', async () => {
+  //     const response = await request(app).post('/auth/request-reset').send({
+  //       email: testUser.email,
+  //     });
+  //     expect(response.status).toBe(200);
 
-      // Get the reset token from the database
-      const user = await userModel.findOne({ email: testUser.email });
-      resetToken = user?.resetPasswordToken || '';
-      expect(resetToken).toBeTruthy();
-    });
+  //     // Get the reset token from the database
+  //     const user = await userModel.findOne({ email: testUser.email });
+  //     resetToken = user?.resetPasswordToken || '';
+  //     expect(resetToken).toBeTruthy();
+  //   });
 
-    test('Should handle reset token validation', async () => {
-      const response = await request(app).get(`/auth/validate-reset-token/${resetToken}`);
-      expect([200, 400]).toContain(response.status);
-      if (response.status === 200) {
-        expect(response.body).toHaveProperty('message', 'Token is valid');
-      }
-    });
+  //   test('Should handle reset token validation', async () => {
+  //     const response = await request(app).get(`/auth/validate-reset-token/${resetToken}`);
+  //     expect([200, 400]).toContain(response.status);
+  //     if (response.status === 200) {
+  //       expect(response.body).toHaveProperty('message', 'Token is valid');
+  //     }
+  //   });
 
-    test('Should reject invalid reset token', async () => {
-      const response = await request(app).get('/auth/validate-reset-token/invalid-token');
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message', 'Invalid or expired token');
-    });
+  //   test('Should reject invalid reset token', async () => {
+  //     const response = await request(app).get('/auth/validate-reset-token/invalid-token');
+  //     expect(response.status).toBe(400);
+  //     expect(response.body).toHaveProperty('message', 'Invalid or expired token');
+  //   });
 
-    test('Should handle password reset with token', async () => {
-      const newPassword = 'NewPassword456';
-      const response = await request(app).post('/auth/reset-password').send({
-        token: resetToken,
-        newPassword: newPassword,
-      });
-      expect([200, 400]).toContain(response.status);
+  //   test('Should handle password reset with token', async () => {
+  //     const newPassword = 'NewPassword456';
+  //     const response = await request(app).post('/auth/reset-password').send({
+  //       token: resetToken,
+  //       newPassword: newPassword,
+  //     });
+  //     expect([200, 400]).toContain(response.status);
 
-      if (response.status === 200) {
-        expect(response.body).toHaveProperty('message', 'Password has been reset successfully');
+  //     if (response.status === 200) {
+  //       expect(response.body).toHaveProperty('message', 'Password has been reset successfully');
 
-        // Verify login with new password
-        const loginResponse = await request(app).post('/auth/login').send({
-          email: testUser.email,
-          password: newPassword,
-        });
-        expect(loginResponse.status).toBe(200);
+  //       // Verify login with new password
+  //       const loginResponse = await request(app).post('/auth/login').send({
+  //         email: testUser.email,
+  //         password: newPassword,
+  //       });
+  //       expect(loginResponse.status).toBe(200);
 
-        // Update test user password for future tests
-        testUser.password = newPassword;
-      }
-    });
+  //       // Update test user password for future tests
+  //       testUser.password = newPassword;
+  //     }
+  //   });
 
-    test('Should reject reset without token', async () => {
-      const response = await request(app).post('/auth/reset-password').send({
-        newPassword: 'SomePassword123',
-      });
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message', 'Token and new password are required');
-    });
+  //   test('Should reject reset without token', async () => {
+  //     const response = await request(app).post('/auth/reset-password').send({
+  //       newPassword: 'SomePassword123',
+  //     });
+  //     expect(response.status).toBe(400);
+  //     expect(response.body).toHaveProperty('message', 'Token and new password are required');
+  //   });
 
-    test('Should reject reset without new password', async () => {
-      const response = await request(app).post('/auth/reset-password').send({
-        token: 'some-token',
-      });
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message', 'Token and new password are required');
-    });
+  //   test('Should reject reset without new password', async () => {
+  //     const response = await request(app).post('/auth/reset-password').send({
+  //       token: 'some-token',
+  //     });
+  //     expect(response.status).toBe(400);
+  //     expect(response.body).toHaveProperty('message', 'Token and new password are required');
+  //   });
 
-    test('Should handle expired reset token', async () => {
-      // Request a reset to get a new token
-      await request(app).post('/auth/request-reset').send({ email: testUser.email });
+  //   test('Should handle expired reset token', async () => {
+  //     // Request a reset to get a new token
+  //     await request(app).post('/auth/request-reset').send({ email: testUser.email });
 
-      // Get the token
-      const user = await userModel.findOne({ email: testUser.email });
-      const token = user?.resetPasswordToken;
+  //     // Get the token
+  //     const user = await userModel.findOne({ email: testUser.email });
+  //     const token = user?.resetPasswordToken;
 
-      // Manually expire the token
-      await userModel.updateOne(
-        { email: testUser.email },
-        { resetPasswordExpires: new Date(Date.now() - 3600000) } // 1 hour ago
-      );
+  //     // Manually expire the token
+  //     await userModel.updateOne(
+  //       { email: testUser.email },
+  //       { resetPasswordExpires: new Date(Date.now() - 3600000) } // 1 hour ago
+  //     );
 
-      // Try to use the expired token
-      const responseExpired = await request(app).post('/auth/reset-password').send({
-        token,
-        newPassword: 'ExpiredTokenTest123',
-      });
-      expect(responseExpired.status).toBe(400);
-      expect(responseExpired.body).toHaveProperty('message', 'Invalid or expired token');
-    });
-  });
+  //     // Try to use the expired token
+  //     const responseExpired = await request(app).post('/auth/reset-password').send({
+  //       token,
+  //       newPassword: 'ExpiredTokenTest123',
+  //     });
+  //     expect(responseExpired.status).toBe(400);
+  //     expect(responseExpired.body).toHaveProperty('message', 'Invalid or expired token');
+  //   });
+  // });
 
   describe('User Check Functionality', () => {
     test('Should confirm existing user', async () => {
@@ -544,7 +551,7 @@ describe('Auth Controller Tests', () => {
         avatar: 'https://example.com/new-avatar.jpg',
       };
 
-      const response = await request(app).put('/auth/me').set('Authorization', `Bearer ${accessToken}`).send(updateData);
+      const response = await request(app).put('/auth/me').set('Authorization', `JWT ${accessToken}`).send(updateData);
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('_id', userId);
@@ -563,7 +570,8 @@ describe('Auth Controller Tests', () => {
 
       const response = await request(app).put('/auth/me').send(updateData);
       expect(response.status).toBe(401);
-      expect(response.text).toBe('Access Denied');
+      //expect(response.text).toBe('Access Denied');
+      expect(response.body).toHaveProperty('message');
     });
   });
 

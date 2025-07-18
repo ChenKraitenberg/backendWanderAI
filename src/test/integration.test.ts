@@ -68,7 +68,9 @@ describe('Travel App Integration Tests', () => {
     });
 
     expect(registerResponse.status).toBe(200);
-    expect(registerResponse.body).toHaveProperty('token');
+    //expect(registerResponse.body).toHaveProperty('token');
+    expect(registerResponse.body).toHaveProperty('accessToken');
+    expect(registerResponse.body).toHaveProperty('refreshToken');
     expect(registerResponse.body).toHaveProperty('user');
     expect(registerResponse.body.user).toHaveProperty('email', 'integration@test.com');
 
@@ -99,7 +101,7 @@ describe('Travel App Integration Tests', () => {
 
     try {
       // 1. Upload an image
-      const uploadResponse = await request(app).post('/file/upload').set('Authorization', `Bearer ${accessToken}`).attach('image', testImagePath);
+      const uploadResponse = await request(app).post('/file/upload').set('Authorization', `JWT ${accessToken}`).attach('image', testImagePath);
 
       expect(uploadResponse.status).toBe(200);
       expect(uploadResponse.body).toHaveProperty('url');
@@ -132,7 +134,7 @@ describe('Travel App Integration Tests', () => {
     let imageUrl;
 
     try {
-      const uploadResponse = await request(app).post('/file/upload').set('Authorization', `Bearer ${accessToken}`).attach('image', testImagePath);
+      const uploadResponse = await request(app).post('/file/upload').set('Authorization', `JWT ${accessToken}`).attach('image', testImagePath);
 
       imageUrl = uploadResponse.body.url;
     } finally {
